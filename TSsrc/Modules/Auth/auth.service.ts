@@ -6,9 +6,8 @@ import { successHandler } from "../../Utils/Handlers/success.handler";
 import { emailEvent } from "../../Utils/Events/email.event";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { compareHash } from "../../Utils/Security/hash.utils";
-import { GenderEnum, IUser, RoleEnum } from "../../DB/Models/user.model";
-import { HydratedDocument } from "mongoose";
-import { generateToken, getSecretAndExpireTimefromRole, StringValue } from "../../Utils/Security/jwt.utils";
+import { GenderEnum} from "../../DB/Models/user.model";
+import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
 
 
 class AuthService {
@@ -97,34 +96,8 @@ class AuthService {
         if (!user ||!await compareHash({data:password , hash:user.password}) ) throw new UnAuthorizedError();
         if (!user.confirmedEmail) throw new BadRequestError({message:"Please confirm your email"});
 
-        const {accessToken , refreshToken} : {accessToken: string ,refreshToken:string} = await this._createToken(user);
+        const {accessToken , refreshToken} : Credentials = await createCredentials(user);
         return successHandler({res, statusCode: 200, message:"Login successful" , data:{accessToken , refreshToken}});
-    }
-
-    private _createToken  = async (user: HydratedDocument<IUser>) : Promise<{accessToken: string ,refreshToken:string}> => {
-        const {accessSecret , accessExpireTime,refreshSecret , refreshExpireTime}
-            : {accessSecret: string , accessExpireTime: StringValue , refreshSecret: string , refreshExpireTime: StringValue}
-            = getSecretAndExpireTimefromRole(user.role as RoleEnum)
-        return {
-            accessToken: await generateToken({
-                payload: {
-                    id:user._id,
-                },
-                secret: accessSecret,
-                options: {
-                    expiresIn: accessExpireTime
-                }                
-            }) ,
-            refreshToken: await generateToken({
-                payload: {
-                    id:user._id,
-                },
-                secret: refreshSecret,
-                options: {
-                    expiresIn: refreshExpireTime
-                }
-            })
-        }
     }
 }
 

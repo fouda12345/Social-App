@@ -1,4 +1,4 @@
-import { model , models, Schema, Types } from "mongoose";
+import { HydratedDocument, model , models, Schema, Types } from "mongoose";
 import { generateHash } from "../../Utils/Security/hash.utils";
 
 export enum RoleEnum {
@@ -112,3 +112,4 @@ userShema.virtual('fullName').set(function (fullName:string) {
 });
 
 export const userModel = models.User || model<IUser>('User', userShema);
+export type HUserDocument = HydratedDocument<IUser>;

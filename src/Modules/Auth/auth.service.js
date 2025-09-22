@@ -72,31 +72,8 @@ class AuthService {
             throw new error_handler_1.UnAuthorizedError();
         if (!user.confirmedEmail)
             throw new error_handler_1.BadRequestError({ message: "Please confirm your email" });
-        const { accessToken, refreshToken } = await this._createToken(user);
+        const { accessToken, refreshToken } = await (0, jwt_utils_1.createCredentials)(user);
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Login successful", data: { accessToken, refreshToken } });
-    };
-    _createToken = async (user) => {
-        const { accessSecret, accessExpireTime, refreshSecret, refreshExpireTime } = (0, jwt_utils_1.getSecretAndExpireTimefromRole)(user.role);
-        return {
-            accessToken: await (0, jwt_utils_1.generateToken)({
-                payload: {
-                    id: user._id,
-                },
-                secret: accessSecret,
-                options: {
-                    expiresIn: accessExpireTime
-                }
-            }),
-            refreshToken: await (0, jwt_utils_1.generateToken)({
-                payload: {
-                    id: user._id,
-                },
-                secret: refreshSecret,
-                options: {
-                    expiresIn: refreshExpireTime
-                }
-            })
-        };
     };
 }
 exports.default = new AuthService();
