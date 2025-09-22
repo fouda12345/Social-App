@@ -62,12 +62,24 @@ export class ConflictError extends AppError {
     }
 }
 
-export class UnAuthorizedError extends AppError {
+export class UnauthorizedError extends AppError {
     constructor(
         {
             message = "Invalid credentials",
             options,
             statusCode = 401,
+        } : IErrorConstructor = {}
+    ) {
+        super({message, options, statusCode})
+    }
+}
+
+export class ForbiddenError extends AppError {
+    constructor(
+        {
+            message = "Don't have permission",
+            options,
+            statusCode = 403,
         } : IErrorConstructor = {}
     ) {
         super({message, options, statusCode})

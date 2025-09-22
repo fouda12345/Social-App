@@ -11,5 +11,5 @@ export const successHandler = ({
     message?: string;
     data?: Object|undefined;
 }) : Response => {
-    return res.status(statusCode).json({ message: message , data });
+    return res.status(statusCode).json({message , data});
 };

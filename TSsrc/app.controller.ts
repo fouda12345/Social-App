@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import type { Express } from 'express';
 
 import authRouter from './Modules/Auth/auth.controller';
+import userRouter from './Modules/User/user.controller';
 dotenv.config({path: path.resolve("./config/.env")});
 import { errorHandler } from './Utils/Handlers/error.handler';
 import { connectDB } from './DB/connection';
@@ -25,6 +26,7 @@ export const bootstrap = async() : Promise<void> => {
     app.use(cors(corsOptions) , express.json() , helmet() , limiter , express.static(path.resolve('./src')));
 
     app.use("/api/v1/auth" , authRouter);
+    app.use("/api/v1/user" , userRouter);
     
     app.use(errorHandler)
 

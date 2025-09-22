@@ -8,6 +8,8 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_model_1 = require("../../DB/Models/user.model");
 const error_handler_1 = require("../Handlers/error.handler");
 const user_reposetory_1 = require("../../DB/reposetories/user.reposetory");
+const uuid_1 = require("uuid");
+const token_reposetory_1 = require("../../DB/reposetories/token.reposetory");
 var TokenType;
 (function (TokenType) {
     TokenType["ACCESS"] = "ACCESS";
@@ -15,22 +17,22 @@ var TokenType;
 })(TokenType || (exports.TokenType = TokenType = {}));
 var SignatureLevel;
 (function (SignatureLevel) {
-    SignatureLevel["USER"] = "rttwr";
-    SignatureLevel["ADMIN"] = "dyhsrft";
+    SignatureLevel["USER"] = "ATCH";
+    SignatureLevel["ADMIN"] = "HUGK";
 })(SignatureLevel || (exports.SignatureLevel = SignatureLevel = {}));
-const getSignatureLevel = async (role = user_model_1.RoleEnum.USER) => {
-    let signatureLevel = SignatureLevel.USER;
+const getSignatureLevel = async (role) => {
+    let signatureLevel;
     switch (role) {
         case user_model_1.RoleEnum.ADMIN:
             signatureLevel = SignatureLevel.ADMIN;
             break;
-        default:
+        case user_model_1.RoleEnum.USER:
             signatureLevel = SignatureLevel.USER;
     }
     return signatureLevel;
 };
 exports.getSignatureLevel = getSignatureLevel;
-const getSignatures = async (signatureLevel = SignatureLevel.USER) => {
+const getSignatures = async (signatureLevel) => {
     let signatures = { accessSecret: "", refreshSecret: "" };
     switch (signatureLevel) {
         case SignatureLevel.ADMIN:
@@ -39,29 +41,35 @@ const getSignatures = async (signatureLevel = SignatureLevel.USER) => {
                 refreshSecret: process.env.ADMIN_JWT_SECRET_REFRESH
             };
             break;
-        default:
+        case SignatureLevel.USER:
             signatures = {
                 accessSecret: process.env.USER_JWT_SECRET_ACCESS,
                 refreshSecret: process.env.USER_JWT_SECRET_REFRESH
             };
+            break;
+        default:
+            throw new error_handler_1.UnauthorizedError({ message: "Invalid signature" });
     }
     return signatures;
 };
 exports.getSignatures = getSignatures;
 const createCredentials = async (user) => {
     const signatures = await (0, exports.getSignatures)(await (0, exports.getSignatureLevel)(user.role));
+    const jwtid = (0, uuid_1.v4)();
     const accessToken = await (0, exports.generateToken)({
         payload: { id: user._id, },
         secret: signatures.accessSecret,
         options: {
-            expiresIn: process.env.JWT_ACCESS_EXPIRE_TIME
+            expiresIn: process.env.JWT_ACCESS_EXPIRE_TIME,
+            jwtid
         }
     });
     const refreshToken = await (0, exports.generateToken)({
         payload: { id: user._id, },
         secret: signatures.refreshSecret,
         options: {
-            expiresIn: process.env.JWT_REFRESH_EXPIRE_TIME
+            expiresIn: process.env.JWT_REFRESH_EXPIRE_TIME,
+            jwtid
         }
     });
     return { accessToken, refreshToken };
@@ -70,18 +78,23 @@ exports.createCredentials = createCredentials;
 const decodeToken = async ({ authorization, tokenType = TokenType.ACCESS }) => {
     const [bearer, token] = authorization?.split(" ");
     if (!bearer || !token)
-        throw new error_handler_1.UnAuthorizedError({ message: "missing token parts" });
+        throw new error_handler_1.UnauthorizedError({ message: "missing token parts" });
     const signatures = await (0, exports.getSignatures)(bearer);
     const decodedToken = await (0, exports.verifyToken)({
         token,
         secret: tokenType === TokenType.ACCESS ? signatures.accessSecret : signatures.refreshSecret
     });
-    if (!decodedToken?.id || !decodedToken?.iat)
-        throw new error_handler_1.UnAuthorizedError({ message: "Invalid Token Payload" });
+    if (!decodedToken?.id || !decodedToken?.iat || !decodedToken?.jti)
+        throw new error_handler_1.UnauthorizedError({ message: "Invalid Token Payload" });
+    const tokenModel = new token_reposetory_1.TokenReposetory();
+    if (await tokenModel.findOne({ filter: { jti: decodedToken.jti } }))
+        throw new error_handler_1.UnauthorizedError({ message: "Invalid or Expired Token" });
     const userModel = new user_reposetory_1.UserReposetory();
-    const user = await userModel.findOne({ filter: { _id: decodedToken.id } });
+    const user = await userModel.findOne({ filter: { _id: decodedToken.id }, lean: true });
     if (!user)
         throw new error_handler_1.NotFoundError({ message: "Account not registered" });
+    if (user.credentailsUpdatedAt?.getTime() > decodedToken.iat * 1000)
+        throw new error_handler_1.UnauthorizedError({ message: "Invalid or Expired Token" });
     return { user, decodedToken };
 };
 exports.decodeToken = decodeToken;

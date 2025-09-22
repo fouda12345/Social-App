@@ -69,11 +69,11 @@ class AuthService {
         const { email, password } = req.body;
         const user = await this._userModel.findOne({ filter: { email } });
         if (!user || !await (0, hash_utils_1.compareHash)({ data: password, hash: user.password }))
-            throw new error_handler_1.UnAuthorizedError();
+            throw new error_handler_1.UnauthorizedError();
         if (!user.confirmedEmail)
             throw new error_handler_1.BadRequestError({ message: "Please confirm your email" });
-        const { accessToken, refreshToken } = await (0, jwt_utils_1.createCredentials)(user);
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Login successful", data: { accessToken, refreshToken } });
+        const Credentials = await (0, jwt_utils_1.createCredentials)(user);
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Login successful", data: Credentials });
     };
 }
 exports.default = new AuthService();

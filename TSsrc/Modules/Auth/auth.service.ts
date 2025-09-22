@@ -1,5 +1,5 @@
 import type { Request , Response , NextFunction, RequestHandler } from "express";
-import { AppError, BadRequestError, ConflictError, NotFoundError, UnAuthorizedError } from "../../Utils/Handlers/error.handler";
+import { AppError, BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
 import { IConfirmEmailDTO, ILoginDTO, ISendConfirmEmailDTO, ISignUpDTO } from "./auth.dto";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { successHandler } from "../../Utils/Handlers/success.handler";
@@ -93,11 +93,11 @@ class AuthService {
         const {email , password} : ILoginDTO = req.body;
 
         const user = await this._userModel.findOne({filter:{email}});
-        if (!user ||!await compareHash({data:password , hash:user.password}) ) throw new UnAuthorizedError();
+        if (!user ||!await compareHash({data:password , hash:user.password}) ) throw new UnauthorizedError();
         if (!user.confirmedEmail) throw new BadRequestError({message:"Please confirm your email"});
 
-        const {accessToken , refreshToken} : Credentials = await createCredentials(user);
-        return successHandler({res, statusCode: 200, message:"Login successful" , data:{accessToken , refreshToken}});
+        const Credentials: Credentials = await createCredentials(user);
+        return successHandler({res, statusCode: 200, message:"Login successful" , data:Credentials});
     }
 }
 
