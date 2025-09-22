@@ -1,10 +1,17 @@
-import jwt, { PrivateKey, Secret, SignOptions } from "jsonwebtoken";
+import jwt, { JwtPayload, PrivateKey, Secret, SignOptions } from "jsonwebtoken";
 import { RoleEnum, HUserDocument } from "../../DB/Models/user.model";
 import type { StringValue } from "ms";
+import { NotFoundError, UnAuthorizedError } from "../Handlers/error.handler";
+import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 
+
+export enum TokenType {
+    ACCESS = "ACCESS",
+    REFRESH = "REFRESH"
+}
 export enum SignatureLevel {
-   USER = process.env.USER_BEARER_SIGNATURE_LEVEL as unknown as number,
-   ADMIN = process.env.ADMIN_BEARER_SIGNATURE_LEVEL as unknown as number
+   USER = "rttwr",
+   ADMIN = "dyhsrft"
 }
 export type Signatures = {
     accessSecret: Secret,
@@ -30,8 +37,8 @@ export const getSignatures = async (signatureLevel: SignatureLevel = SignatureLe
     switch (signatureLevel) {
         case SignatureLevel.ADMIN:
             signatures = {
-                accessSecret: process.env.HUGK_JWT_SECRET_ACCESS as Secret,
-                refreshSecret: process.env.HUGK_JWT_SECRET_REFRESH as Secret
+                accessSecret: process.env.ADMIN_JWT_SECRET_ACCESS as Secret,
+                refreshSecret: process.env.ADMIN_JWT_SECRET_REFRESH as Secret
             }
             break;
         default:
@@ -56,12 +63,33 @@ export const createCredentials = async (user: HUserDocument): Promise<Credential
         secret: signatures.refreshSecret,
         options: {
             expiresIn: process.env.JWT_REFRESH_EXPIRE_TIME as StringValue|number
+
         }
     })
     return { accessToken, refreshToken }
 }
-export const verifyToken = (token: string, secret: Secret) => {
-    return jwt.verify(token, secret);
+export const decodeToken = async ({
+    authorization,
+    tokenType = TokenType.ACCESS
+} : {
+    authorization : string,
+    tokenType : TokenType
+}): Promise<{user : HUserDocument , decodedToken : JwtPayload}> => {
+    const [bearer , token] : string[] = authorization?.split(" ")
+    if(!bearer||!token) 
+        throw new UnAuthorizedError({message:"missing token parts"})
+    const signatures = await getSignatures(bearer as unknown as SignatureLevel)
+    const decodedToken : JwtPayload = await verifyToken({
+        token,
+        secret: tokenType === TokenType.ACCESS ? signatures.accessSecret : signatures.refreshSecret
+    })
+    if(!decodedToken?.id||!decodedToken?.iat) 
+        throw new UnAuthorizedError({message:"Invalid Token Payload"})
+    const userModel = new UserReposetory()
+    const user = await userModel.findOne({filter:{_id:decodedToken.id}})
+    if(!user) throw new NotFoundError({message:"Account not registered"})
+
+    return {user , decodedToken}
 }
 export const generateToken = async ({
     payload,
@@ -74,4 +102,13 @@ export const generateToken = async ({
 }): Promise<string> => {
     return await jwt.sign(payload, secret, options);
 };
+export const verifyToken = async ({
+    token,
+    secret
+}: {
+    token: string,
+    secret: Secret
+}) : Promise<JwtPayload> => {
+    return await jwt.verify(token, secret) as JwtPayload;
+}
 
