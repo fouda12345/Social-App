@@ -58,7 +58,7 @@ export const createCredentials = async (user: HUserDocument): Promise<Credential
     const signatures : Signatures = await getSignatures(await getSignatureLevel(user.role as RoleEnum))
     const jwtid : string = uuid()
     const accessToken = await generateToken({
-        payload: {id: user._id,},
+        payload: {_id: user._id,},
         secret: signatures.accessSecret,
         options: {
             expiresIn: process.env.JWT_ACCESS_EXPIRE_TIME as StringValue|number,
@@ -91,13 +91,13 @@ export const decodeToken = async ({
         token,
         secret: tokenType === TokenType.ACCESS ? signatures.accessSecret : signatures.refreshSecret
     })
-    if(!decodedToken?.id||!decodedToken?.iat||!decodedToken?.jti) 
+    if(!decodedToken?._id||!decodedToken?.iat||!decodedToken?.jti) 
         throw new UnauthorizedError({message:"Invalid Token Payload"})
     const tokenModel = new TokenReposetory()
     if (await tokenModel.findOne({filter:{jti:decodedToken.jti}}))
         throw new UnauthorizedError({message:"Invalid or Expired Token"})
     const userModel = new UserReposetory()
-    const user = await userModel.findOne({filter:{_id:decodedToken.id} , lean:true})
+    const user = await userModel.findOne({filter:{_id:decodedToken._id} , lean:true})
     if(!user) 
         throw new NotFoundError({message:"Account not registered"})
     if(user.credentailsUpdatedAt?.getTime() > decodedToken.iat * 1000)

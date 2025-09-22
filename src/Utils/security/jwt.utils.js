@@ -57,7 +57,7 @@ const createCredentials = async (user) => {
     const signatures = await (0, exports.getSignatures)(await (0, exports.getSignatureLevel)(user.role));
     const jwtid = (0, uuid_1.v4)();
     const accessToken = await (0, exports.generateToken)({
-        payload: { id: user._id, },
+        payload: { _id: user._id, },
         secret: signatures.accessSecret,
         options: {
             expiresIn: process.env.JWT_ACCESS_EXPIRE_TIME,
@@ -84,13 +84,13 @@ const decodeToken = async ({ authorization, tokenType = TokenType.ACCESS }) => {
         token,
         secret: tokenType === TokenType.ACCESS ? signatures.accessSecret : signatures.refreshSecret
     });
-    if (!decodedToken?.id || !decodedToken?.iat || !decodedToken?.jti)
+    if (!decodedToken?._id || !decodedToken?.iat || !decodedToken?.jti)
         throw new error_handler_1.UnauthorizedError({ message: "Invalid Token Payload" });
     const tokenModel = new token_reposetory_1.TokenReposetory();
     if (await tokenModel.findOne({ filter: { jti: decodedToken.jti } }))
         throw new error_handler_1.UnauthorizedError({ message: "Invalid or Expired Token" });
     const userModel = new user_reposetory_1.UserReposetory();
-    const user = await userModel.findOne({ filter: { _id: decodedToken.id }, lean: true });
+    const user = await userModel.findOne({ filter: { _id: decodedToken._id }, lean: true });
     if (!user)
         throw new error_handler_1.NotFoundError({ message: "Account not registered" });
     if (user.credentailsUpdatedAt?.getTime() > decodedToken.iat * 1000)
