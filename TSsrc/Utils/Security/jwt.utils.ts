@@ -124,4 +124,3 @@ export const verifyToken = async ({
 }) : Promise<JwtPayload> => {
     return await jwt.verify(token, secret) as JwtPayload;
 }
-

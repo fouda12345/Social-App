@@ -2,6 +2,7 @@ import z from "zod";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { BadRequestError } from "../Utils/Handlers/error.handler";
 import { GenderEnum } from "../DB/Models/user.model";
+import { Types } from "mongoose";
 
 export const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
 export const generalFields = {
@@ -11,6 +12,20 @@ export const generalFields = {
     phone : z.string().regex(/^(?:\+20|002|0|20)1[0125][0-9]{8}$/),
     otp : z.string().regex(/^[0-9]{6}$/),
     gender : z.enum(GenderEnum).default(GenderEnum.MALE),
+    checkId :  (data: any,ctx: z.RefinementCtx) : void => {
+        if(data?.id && !Types.ObjectId.isValid(data.id))
+            ctx.addIssue({
+                code: "custom",
+                message: "Invalid ID"
+            })
+    },
+    confirmPassword : (data:any, ctx: z.RefinementCtx) => {
+        if (data.newPassword !== data.confirmNewPassword)
+            ctx.addIssue({
+                code: "custom",
+                message: "Passwords do not match"
+            })
+    }
 }
 
 export const validate = (Schema: z.ZodSchema):RequestHandler => {

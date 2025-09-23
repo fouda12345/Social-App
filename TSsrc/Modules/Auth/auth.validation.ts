@@ -10,13 +10,7 @@ export const signupSchema = z.object({
         confirmPassword : z.string(),
         phone : generalFields.phone.optional(),
         gender: generalFields.gender.optional()
-    }).superRefine((data, ctx) => {
-        if (data.password !== data.confirmPassword)
-            ctx.addIssue({
-                code: "custom",
-                message: "Passwords do not match"
-            })
-    })
+    }).superRefine(generalFields.confirmPassword)
 })
 
 export const confirmEmailSchema = z.object({

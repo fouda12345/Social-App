@@ -22,6 +22,11 @@ export interface IUser {
     };
     confirmedEmail: Date;
     password: string;
+    passwordOTP : {
+        otp : string
+        createdAt : Date
+    },
+    oldPasswords : string[]
     role?: RoleEnum;
     gender?: GenderEnum;
     phone?: string
@@ -65,6 +70,11 @@ export const userShema = new Schema<IUser>({
         type: String,
         required: true,
     },
+    passwordOTP : {
+        otp : String,
+        createdAt : Date
+    },
+    oldPasswords : [String],
     role: {
         type: String,
         enum: RoleEnum,
@@ -93,8 +103,12 @@ export const userShema = new Schema<IUser>({
 });
 
 userShema.pre('save', async function (next) {
-    if (this.isModified('password')) this.password = await generateHash({data:this.password})
+    if (this.isModified('password')) {
+        this.oldPasswords.push(this.password);
+        this.password = await generateHash({data:this.password})
+    }
     if (this.isModified('emailOTP')) this.emailOTP.otp = await generateHash({data:this.emailOTP.otp});
+    if (this.isModified('passwordOTP')) this.passwordOTP.otp = await generateHash({data:this.passwordOTP.otp});
     next();
 });
 
