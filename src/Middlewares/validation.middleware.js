@@ -7,6 +7,7 @@ exports.validate = exports.generalFields = exports.passwordRegex = void 0;
 const zod_1 = __importDefault(require("zod"));
 const error_handler_1 = require("../Utils/Handlers/error.handler");
 const user_model_1 = require("../DB/Models/user.model");
+const mongoose_1 = require("mongoose");
 exports.passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 exports.generalFields = {
     fullName: zod_1.default.string().regex(/^[A-Z][a-z]{2,24}(?:\s[A-Z][a-z]{2,24}){1,2}$/),
@@ -15,6 +16,20 @@ exports.generalFields = {
     phone: zod_1.default.string().regex(/^(?:\+20|002|0|20)1[0125][0-9]{8}$/),
     otp: zod_1.default.string().regex(/^[0-9]{6}$/),
     gender: zod_1.default.enum(user_model_1.GenderEnum).default(user_model_1.GenderEnum.MALE),
+    checkId: (data, ctx) => {
+        if (data?.id && !mongoose_1.Types.ObjectId.isValid(data.id))
+            ctx.addIssue({
+                code: "custom",
+                message: "Invalid ID"
+            });
+    },
+    confirmPassword: (data, ctx) => {
+        if (data.newPassword !== data.confirmNewPassword)
+            ctx.addIssue({
+                code: "custom",
+                message: "Passwords do not match"
+            });
+    }
 };
 const validate = (Schema) => {
     return (req, res, next) => {

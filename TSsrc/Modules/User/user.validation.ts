@@ -1,4 +1,4 @@
-import z, { email } from "zod"
+import z from "zod"
 import { generalFields, passwordRegex } from "../../Middlewares/validation.middleware"
 
 export enum logoutFlag {

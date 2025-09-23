@@ -14,13 +14,7 @@ exports.signupSchema = zod_1.default.object({
         confirmPassword: zod_1.default.string(),
         phone: validation_middleware_1.generalFields.phone.optional(),
         gender: validation_middleware_1.generalFields.gender.optional()
-    }).superRefine((data, ctx) => {
-        if (data.password !== data.confirmPassword)
-            ctx.addIssue({
-                code: "custom",
-                message: "Passwords do not match"
-            });
-    })
+    }).superRefine(validation_middleware_1.generalFields.confirmPassword)
 });
 exports.confirmEmailSchema = zod_1.default.object({
     body: zod_1.default.strictObject({

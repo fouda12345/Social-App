@@ -16,3 +16,14 @@ exports.emailEvent.on('confirmEmail', async (data) => {
     });
     await (0, send_email_1.sendEmail)(data);
 });
+exports.emailEvent.on('resetPassword', async (data) => {
+    data.subject = "Password reset";
+    data.html = (0, generateHtml_utils_1.generateHtml)({
+        code: data.otp,
+        subject: data.subject,
+        name: data.fullName,
+        to: data.to,
+        time: process.env.CODE_EXPIRATION_TIME
+    });
+    await (0, send_email_1.sendEmail)(data);
+});

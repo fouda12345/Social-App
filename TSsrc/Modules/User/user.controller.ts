@@ -5,10 +5,11 @@ import { endpoint } from "./user.authorization";
 import { TokenType } from "../../Utils/Security/jwt.utils";
 import { validate } from "../../Middlewares/validation.middleware";
 import { changePasswordSchema, forgetPasswordSchema, getProfileSchema, logoutSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
+import { cloudFileUpload } from "../../Utils/Handlers/multer/cloud.multer";
 const router   = Router();
 
 router.get(
-    "/profile/:id?",
+    "/profile{/:id}",
     auth({
         accessRoles:endpoint.all
     }),
@@ -63,6 +64,15 @@ router.patch(
     validate(resetPasswordSchema),
     userServices.resetPassword
 );
+
+router.patch(
+    "/profile-image",
+    auth({
+        accessRoles:endpoint.all
+    }),
+    cloudFileUpload().single("profileImage"),
+    userServices.uploadProfileImage
+)
 
 
 export default router

@@ -48,6 +48,11 @@ exports.userShema = new mongoose_1.Schema({
         type: String,
         required: true,
     },
+    passwordOTP: {
+        otp: String,
+        createdAt: Date
+    },
+    oldPasswords: [String],
     role: {
         type: String,
         enum: RoleEnum,
@@ -74,10 +79,14 @@ exports.userShema = new mongoose_1.Schema({
     }
 });
 exports.userShema.pre('save', async function (next) {
-    if (this.isModified('password'))
+    if (this.isModified('password')) {
+        this.oldPasswords.push(this.password);
         this.password = await (0, hash_utils_1.generateHash)({ data: this.password });
+    }
     if (this.isModified('emailOTP'))
         this.emailOTP.otp = await (0, hash_utils_1.generateHash)({ data: this.emailOTP.otp });
+    if (this.isModified('passwordOTP'))
+        this.passwordOTP.otp = await (0, hash_utils_1.generateHash)({ data: this.passwordOTP.otp });
     next();
 });
 exports.userShema.virtual('fullName').set(function (fullName) {

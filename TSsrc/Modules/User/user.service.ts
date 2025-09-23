@@ -8,7 +8,7 @@ import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
 import { HUserDocument } from "../../DB/Models/user.model";
 import { JwtPayload } from "jsonwebtoken";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
-import { compareHash, generateHash } from "../../Utils/Security/hash.utils";
+import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
 
@@ -18,7 +18,7 @@ class UserService {
     constructor() { }
     public getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const {id} : IgetProfileDTO  = req.params || undefined
-        const Tuser : HUserDocument|undefined = id == req.user?._id ? req.user : await this._userModel.findOne({filter:{_id:id , confirmedEmail:{$exists:true}} , lean:true , select:"-__v -_id firstName middleName lastName email fullName role gender phone"});
+        const Tuser : HUserDocument|undefined = id == req.user?._id || !id ? req.user : await this._userModel.findOne({filter:{_id:id , confirmedEmail:{$exists:true}} , lean:true , select:"-__v -_id firstName middleName lastName email fullName role gender phone"});
         if(!Tuser)
             throw new NotFoundError({message:"User not found"});
         return successHandler({ res, statusCode: 200, message: "Success", data: {user: Tuser} });
@@ -103,6 +103,9 @@ class UserService {
             throw new BadRequestError({message:"can't use an old password"});
         await this._userModel.findOneAndUpdate({filter:{email} , update:{password:newPassword , $unset:{passwordOTP:1}, credentailsUpdatedAt:new Date()}});
         return successHandler({ res, statusCode: 200, message: "otp sent to your email" });
+    }
+    uploadProfileImage = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        return successHandler({ res, statusCode: 200, message: "Success" , data: req.file });
     }
 }
 
