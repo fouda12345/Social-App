@@ -11,6 +11,8 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/H
 import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
+import { uploadFile, uploadFiles } from "../../Utils/upload/S3 Bucket/s3.config";
+
 
 class UserService {
     private _userModel = new UserReposetory();
@@ -105,7 +107,14 @@ class UserService {
         return successHandler({ res, statusCode: 200, message: "otp sent to your email" });
     }
     uploadProfileImage = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        return successHandler({ res, statusCode: 200, message: "Success" , data: req.file });
+        if (!req.file) throw new BadRequestError({ message: "No file uploaded" });
+        const key = await uploadFile({ file: req.file,path:`users/${req.user?._id}/profileImage` });
+        return successHandler({ res, statusCode: 200, message: "Success" , data: {key} });
+    }
+    uploadCoverImages = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.files) throw new BadRequestError({ message: "No file uploaded" });
+        const keys = await uploadFiles({ files: req.files as Express.Multer.File[] , path:`users/${req.user?._id}/coverImages` });
+        return successHandler({ res, statusCode: 200, message: "Success" , data: {keys} });
     }
 }
 

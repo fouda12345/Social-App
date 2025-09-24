@@ -5,7 +5,7 @@ import { endpoint } from "./user.authorization";
 import { TokenType } from "../../Utils/Security/jwt.utils";
 import { validate } from "../../Middlewares/validation.middleware";
 import { changePasswordSchema, forgetPasswordSchema, getProfileSchema, logoutSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
-import { cloudFileUpload } from "../../Utils/Handlers/multer/cloud.multer";
+import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
 const router   = Router();
 
 router.get(
@@ -70,8 +70,25 @@ router.patch(
     auth({
         accessRoles:endpoint.all
     }),
-    cloudFileUpload().single("profileImage"),
+    cloudFileUpload({
+        filter:fileFilter.image,
+        maxSize:5,
+        storageApproach:StorageApproach.DISK
+    }).single("profileImage"),
     userServices.uploadProfileImage
+)
+
+router.patch(
+    "/covere-images",
+    auth({
+        accessRoles:endpoint.all
+    }),
+    cloudFileUpload({
+        filter:fileFilter.image,
+        maxSize:5,
+        storageApproach:StorageApproach.DISK
+    }).array("coverImage",5),
+    userServices.uploadCoverImages
 )
 
 

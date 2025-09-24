@@ -9,6 +9,7 @@ const error_handler_1 = require("../../Utils/Handlers/error.handler");
 const hash_utils_1 = require("../../Utils/Security/hash.utils");
 const otp_utils_1 = require("../../Utils/Security/otp.utils");
 const email_event_1 = require("../../Utils/Events/email.event");
+const s3_config_1 = require("../../Utils/upload/S3 Bucket/s3.config");
 class UserService {
     _userModel = new user_reposetory_1.UserReposetory();
     _tokenModel = new token_reposetory_1.TokenReposetory();
@@ -102,7 +103,16 @@ class UserService {
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "otp sent to your email" });
     };
     uploadProfileImage = async (req, res, next) => {
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: req.file });
+        if (!req.file)
+            throw new error_handler_1.BadRequestError({ message: "No file uploaded" });
+        const key = await (0, s3_config_1.uploadFile)({ file: req.file, path: `users/${req.user?._id}/profileImage` });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { key } });
+    };
+    uploadCoverImages = async (req, res, next) => {
+        if (!req.files)
+            throw new error_handler_1.BadRequestError({ message: "No file uploaded" });
+        const keys = await (0, s3_config_1.uploadFiles)({ files: req.files, path: `users/${req.user?._id}/coverImages` });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { keys } });
     };
 }
 exports.default = new UserService();
