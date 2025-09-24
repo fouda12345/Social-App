@@ -29,10 +29,12 @@ export interface IUser {
     oldPasswords : string[]
     role?: RoleEnum;
     gender?: GenderEnum;
-    phone?: string
-    credentailsUpdatedAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
+    phone?: string;
+    profileImage?: string;
+    coverImages?: string[];
+    credentailsUpdatedAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export const userShema = new Schema<IUser>({
@@ -90,6 +92,8 @@ export const userShema = new Schema<IUser>({
         unique: true,
         sparse: true
     },
+    profileImage: String,
+    coverImages: [String],
     credentailsUpdatedAt: Date
 },
 {

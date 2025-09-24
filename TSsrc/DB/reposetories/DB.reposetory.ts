@@ -31,7 +31,7 @@ export class DBReposetory<DocType> {
 
     async findOneAndUpdate({
         filter,
-        update,
+        update = {$inc:{__v : 1}},
         options = {new:true}
     } : {
         filter:RootFilterQuery<DocType>,

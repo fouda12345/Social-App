@@ -54,3 +54,21 @@ export const resetPasswordSchema = z.object({
         otp : generalFields.otp
     }).superRefine(generalFields.confirmPassword)
 })
+
+export const profileImageSchema = z.object({
+    body: z.strictObject({
+        contentType : z.string().optional(),
+        originalName : z.string().optional()
+    })
+})
+
+export const coverImagesSchema = z.object({
+    body: z.strictObject({
+        files : z.array(
+            z.strictObject({
+                contentType : z.string(),
+                originalName : z.string()
+            })
+        ).optional()
+    })
+})

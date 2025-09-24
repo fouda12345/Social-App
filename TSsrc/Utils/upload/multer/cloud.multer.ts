@@ -51,3 +51,14 @@ export const cloudFileUpload  = ({
     })
 
 }
+
+export const isMulterFile = (file: any): file is Express.Multer.File => {
+  return (
+    file &&
+    typeof file === "object" &&
+    "fieldname" in file &&
+    "originalname" in file &&
+    "mimetype" in file &&
+    "size" in file
+  );
+}

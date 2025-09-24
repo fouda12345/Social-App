@@ -1,17 +1,17 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
-import { IgetProfileDTO, IlogoutDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO } from "./user.dto";
+import { IgetProfileDTO, IlogoutDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO } from "./user.dto";
 import { changePasswordFlag, logoutFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
 import { HUserDocument } from "../../DB/Models/user.model";
 import { JwtPayload } from "jsonwebtoken";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
+import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
 import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
-import { uploadFile, uploadFiles } from "../../Utils/upload/S3 Bucket/s3.config";
+import { uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 
 
 class UserService {
@@ -107,14 +107,24 @@ class UserService {
         return successHandler({ res, statusCode: 200, message: "otp sent to your email" });
     }
     uploadProfileImage = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        if (!req.file) throw new BadRequestError({ message: "No file uploaded" });
-        const key = await uploadFile({ file: req.file,path:`users/${req.user?._id}/profileImage` });
-        return successHandler({ res, statusCode: 200, message: "Success" , data: {key} });
+        const file : IprofileImageDTO = req.body;
+        const  data : {key : string}  | {url : string , key : string} = await uploadFile({ 
+            file: req.file as Express.Multer.File || file,
+            path:`users/${req.user?._id}/profileImage`
+        })
+        if (!await this._userModel.findOneAndUpdate({filter:{_id:req.user?._id} , update:{profileImage:data.key}}))
+            throw new AppError({message:"Something went wrong"});
+        return successHandler({ res, statusCode: 200, message: "Success" , data });
     }
     uploadCoverImages = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        if (!req.files) throw new BadRequestError({ message: "No file uploaded" });
-        const keys = await uploadFiles({ files: req.files as Express.Multer.File[] , path:`users/${req.user?._id}/coverImages` });
-        return successHandler({ res, statusCode: 200, message: "Success" , data: {keys} });
+        const files : IcoverImagesDTO = req.body;
+        const data : {key : string}[]  | {url : string , key : string}[] = await uploadFile({
+            files : req.files as Express.Multer.File[] || files,
+            path:`users/${req.user?._id}/coverImages`
+        })
+        if (!await this._userModel.findOneAndUpdate({filter:{_id:req.user?._id} , update:{coverImages:[...data.map(({key}) => key)]}}))
+            throw new AppError({message:"Something went wrong"});
+        return successHandler({ res, statusCode: 200, message: "Success" , data });
     }
 }
 
