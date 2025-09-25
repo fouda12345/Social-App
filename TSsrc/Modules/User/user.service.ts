@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
-import { IgetProfileDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO } from "./user.dto";
+import { IgetProfileDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO, IdeleteAssetDTO } from "./user.dto";
 import { changePasswordFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
@@ -11,12 +11,17 @@ import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from "../
 import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
-import { uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
+import { deleteFiles, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
+import { DBReposetory } from "../../DB/reposetories/DB.reposetory";
+import { assetModel, IAsset } from "../../DB/Models/asset.model";
+import { promise } from "zod";
+import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
 
 
 class UserService {
     private _userModel = new UserReposetory();
     private _tokenModel = new TokenReposetory();
+    private _assetModel = new DBReposetory<IAsset>(assetModel);
     constructor() { }
     public getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const {id} : IgetProfileDTO  = req.params || undefined
@@ -90,6 +95,9 @@ class UserService {
             file: req.file as Express.Multer.File || file,
             path:`users/${req.user?._id}/profileImage`
         })
+        if (req.user?.profileImage && !await deleteFiles({key:req.user?.profileImage}))
+            throw new AppError({message:"Something went wrong"});
+
         if (!await this._userModel.findOneAndUpdate({filter:{_id:req.user?._id} , update:{profileImage:data.key}}))
             throw new AppError({message:"Something went wrong"});
         return successHandler({ res, statusCode: 200, message: "Success" , data });
@@ -100,8 +108,23 @@ class UserService {
             files : req.files as Express.Multer.File[] || files,
             path:`users/${req.user?._id}/coverImages`
         })
-        if (!await this._userModel.findOneAndUpdate({filter:{_id:req.user?._id} , update:{coverImages:[...data.map(({key}) => key)]}}))
+        if (!await this._userModel.findOneAndUpdate({filter:{_id:req.user?._id} , update:{coverImages:[...(req.user?.coverImages || []),...data.map(({key}) => key)]}}))
             throw new AppError({message:"Something went wrong"});
+        return successHandler({ res, statusCode: 200, message: "Success" , data });
+    }
+    deleteAssets = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        const {key , keys} : IdeleteAssetDTO = req.body;
+        let data : DeleteObjectCommandOutput|DeleteObjectsCommandOutput
+        if (key){
+            if(!await this._tokenModel.findOne({filter:{key , userId:req.user?._id}}))
+                throw new UnauthorizedError({message:"you don't have permission"});
+            data = await deleteFiles({key});
+        }
+        if (keys && keys.length > 0){
+            if(!await Promise.all(keys.map(async (key) => this._tokenModel.findOne({filter:{key , userId:req.user?._id}}))))
+                throw new UnauthorizedError({message:"you don't have permission"});
+            data = await deleteFiles({keys,Quiet:true});
+        }
         return successHandler({ res, statusCode: 200, message: "Success" , data });
     }
 }

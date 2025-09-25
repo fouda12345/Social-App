@@ -1,4 +1,4 @@
-import { GetObjectCommand, ObjectCannedACL, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, DeleteObjectCommandOutput, DeleteObjectsCommand, DeleteObjectsCommandOutput, GetObjectCommand, ObjectCannedACL, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { v4 as uuid } from "uuid";
 import { createReadStream } from "node:fs";
 import { AppError, BadRequestError, NotFoundError } from "../../Handlers/error.handler";
@@ -9,6 +9,7 @@ import { Response } from "express";
 import { successHandler } from "../../Handlers/success.handler";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream";
+import { de } from "zod/v4/locales";
 
 export const creatS3WriteStreamPipeline = promisify(pipeline);
 export type IPresignedUrlData = {
@@ -203,3 +204,47 @@ export const getFile = async ({
     }
     return await creatS3WriteStreamPipeline((response.Body as NodeJS.ReadableStream), res)
 }
+
+async function deleteFile ({
+    Bucket,
+    key,
+}: {
+    Bucket?: string,
+    key: string
+}) : Promise<DeleteObjectCommandOutput>
+
+async function deleteFile ({
+    Bucket,
+    keys,
+    Quiet
+}: {
+    Bucket?: string,
+    keys: string[],
+    Quiet?: boolean
+}) : Promise<DeleteObjectsCommandOutput>
+
+async function deleteFile ({
+    Bucket = process.env.S3_BUCKET_NAME as string,
+    key,
+    keys,
+    Quiet = false
+}: {
+    Bucket?: string,
+    key?: string,
+    keys?: string[],
+    Quiet?: boolean
+}) : Promise<DeleteObjectCommandOutput | DeleteObjectsCommandOutput> {
+    let command
+    switch(true){
+        case Boolean(key):
+            command = new DeleteObjectCommand({Bucket, Key: key});
+            return await S3Config().send(command);
+        case keys && keys.length > 0:
+            command = new DeleteObjectsCommand({Bucket, Delete: {Quiet, Objects: keys.map(key => ({Key: key}))}});
+            return await S3Config().send(command);
+        default:
+            throw new BadRequestError({ message: "failed to delete file missing data" })
+    }
+}
+
+export const deleteFiles = deleteFile

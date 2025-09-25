@@ -74,12 +74,12 @@ router.patch(
     userServices.uploadCoverImages
 )
 
-// router.get(
-//     "/all-users",
-//     auth({
-//         accessRoles:endpoint.all
-//     }),
-//     userServices.getAllUsers
-// )
+router.delete(
+    "/delete-asset",
+    auth({
+        accessRoles:endpoint.all
+    }),
+    userServices.deleteAssets
+)
 
 export default router

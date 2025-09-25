@@ -72,3 +72,16 @@ export const coverImagesSchema = z.object({
         ).optional()
     })
 })
+
+export const deleteAssetSchema = z.object({
+    body: z.strictObject({
+        key : z.string().optional(),
+        keys : z.array(z.string()).optional()
+    }).superRefine((data, ctx) => {
+        if(!data.key && !data.keys?.length)
+            ctx.addIssue({
+                code: "custom",
+                message: "key or keys is required"
+            })
+    })
+})
