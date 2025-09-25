@@ -114,7 +114,7 @@ class UserService {
     }
     deleteAssets = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const {key , keys} : IdeleteAssetDTO = req.body;
-        let data : DeleteObjectCommandOutput|DeleteObjectsCommandOutput
+        let data : DeleteObjectCommandOutput|DeleteObjectsCommandOutput|{} = {}
         if (key){
             if(!await this._tokenModel.findOne({filter:{key , userId:req.user?._id}}))
                 throw new UnauthorizedError({message:"you don't have permission"});
