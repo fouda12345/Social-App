@@ -13,6 +13,7 @@ import { errorHandler } from './Utils/Handlers/error.handler';
 import { connectDB } from './DB/connection';
 import { limiter } from './Utils/Middlewares/limitter.utils';
 import { corsOptions } from './Utils/Middlewares/cors.utils';
+import { getAssets } from './Utils/Handlers/get.assets';
 
 
 
@@ -27,7 +28,7 @@ export const bootstrap = async() : Promise<void> => {
 
     app.use("/api/v1/auth" , authRouter);
     app.use("/api/v1/user" , userRouter);
-    
+    app.get("/uploads/*path" , getAssets)
     app.use(errorHandler)
 
     app.listen(port, () => {

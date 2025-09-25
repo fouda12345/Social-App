@@ -1,11 +1,16 @@
-import { ObjectCannedACL, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, ObjectCannedACL, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { v4 as uuid } from "uuid";
 import { createReadStream } from "node:fs";
-import { AppError, BadRequestError } from "../../Handlers/error.handler";
+import { AppError, BadRequestError, NotFoundError } from "../../Handlers/error.handler";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { isMulterFile } from "../multer/cloud.multer";
+import { Response } from "express";
+import { successHandler } from "../../Handlers/success.handler";
+import { promisify } from "node:util";
+import { pipeline } from "node:stream";
 
+export const creatS3WriteStreamPipeline = promisify(pipeline);
 export type IPresignedUrlData = {
     contentType: string,
     originalName: string
@@ -148,3 +153,53 @@ async function uploadFileFunction({
     throw new BadRequestError({ message: "File upload failed missing required data" })
 }
 export const uploadFile = uploadFileFunction
+
+export const getFile = async ({
+    Bucket = process.env.S3_BUCKET_NAME as string,
+    key,
+    expiresIn = 120,
+    download = "false",
+    downloadName = "done",
+    res,
+    preSigned
+}: {
+    Bucket?: string,
+    key: string,
+    expiresIn?:number,
+    downloadName?: string,
+    download?: "true"|"false",
+    preSigned?: "true"|"false",
+    res: Response
+}) : Promise<Response|void> =>{
+    const ext = "." + key.split('.').pop()
+    if (download === "true" && !downloadName.endsWith(ext)) {
+        downloadName += ext
+    }
+    if (preSigned === "true") {
+        const command = new GetObjectCommand({
+            Bucket,
+            Key: key,
+            ResponseContentDisposition : download === "true" ? `attachment; filename="${downloadName}"` : undefined,
+        })
+        const url = await getSignedUrl(S3Config(), command, {
+            expiresIn
+        })
+        if (!url) {
+            throw new NotFoundError({ message: "asset not found" });
+        }
+        successHandler({ res, statusCode: 200, message: "Success", data: url });
+    }
+    const command = new GetObjectCommand({
+        Bucket,
+        Key: key,
+    });
+    const response = await S3Config().send(command);
+    if(!response||!response.Body){ 
+        throw new NotFoundError({ message: "asset not found" });
+    }
+    res.setHeader('Content-Type', `${response.ContentType || 'application/octet-stream'}`);
+    if (download === "true") {
+        res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    }
+    return await creatS3WriteStreamPipeline((response.Body as NodeJS.ReadableStream), res)
+}

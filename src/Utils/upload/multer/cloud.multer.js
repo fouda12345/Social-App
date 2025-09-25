@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cloudFileUpload = exports.StorageApproach = exports.fileFilter = void 0;
+exports.isMulterFile = exports.cloudFileUpload = exports.StorageApproach = exports.fileFilter = void 0;
 const multer_1 = __importDefault(require("multer"));
 const node_os_1 = __importDefault(require("node:os"));
 const uuid_1 = require("uuid");
@@ -43,3 +43,12 @@ const cloudFileUpload = ({ storageApproach = StorageApproach.MEMORY, filter = ex
     });
 };
 exports.cloudFileUpload = cloudFileUpload;
+const isMulterFile = (file) => {
+    return (file &&
+        typeof file === "object" &&
+        "fieldname" in file &&
+        "originalname" in file &&
+        "mimetype" in file &&
+        "size" in file);
+};
+exports.isMulterFile = isMulterFile;

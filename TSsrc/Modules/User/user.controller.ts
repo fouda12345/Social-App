@@ -2,9 +2,8 @@ import { Router } from "express";
 import userServices from "./user.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { endpoint } from "./user.authorization";
-import { TokenType } from "../../Utils/Security/jwt.utils";
 import { validate } from "../../Middlewares/validation.middleware";
-import { changePasswordSchema, forgetPasswordSchema, getProfileSchema, logoutSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
+import { changePasswordSchema, coverImagesSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
 import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
 const router   = Router();
 
@@ -15,24 +14,6 @@ router.get(
     }),
     validate(getProfileSchema),
     userServices.getProfile
-);
-
-router.post(
-    "/logout",
-    auth({
-        accessRoles:endpoint.all
-    }),
-    validate(logoutSchema),
-    userServices.logout
-);
-
-router.get(
-    "/refresh-token",
-    auth({
-        tokenType:TokenType.REFRESH,
-        accessRoles:endpoint.all
-    }),
-    userServices.refreshToken
 );
 
 router.patch(
@@ -75,6 +56,7 @@ router.patch(
         maxSize:5,
         storageApproach:StorageApproach.DISK
     }).single("profileImage"),
+    validate(profileImageSchema),
     userServices.uploadProfileImage
 )
 
@@ -88,8 +70,16 @@ router.patch(
         maxSize:5,
         storageApproach:StorageApproach.DISK
     }).array("coverImage",5),
+    validate(coverImagesSchema),
     userServices.uploadCoverImages
 )
 
+// router.get(
+//     "/all-users",
+//     auth({
+//         accessRoles:endpoint.all
+//     }),
+//     userServices.getAllUsers
+// )
 
 export default router

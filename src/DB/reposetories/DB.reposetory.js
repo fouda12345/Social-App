@@ -12,7 +12,7 @@ class DBReposetory {
     async findOne({ filter, select = "", options = {}, populate = [], lean = false }) {
         return await this.model.findOne(filter, options).select(select).populate(populate).lean(lean);
     }
-    async findOneAndUpdate({ filter, update, options = { new: true } }) {
+    async findOneAndUpdate({ filter, update = { $inc: { __v: 1 } }, options = { new: true } }) {
         return await this.model.findOneAndUpdate(filter, update, options);
     }
 }

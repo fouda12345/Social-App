@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.logoutSchema = exports.getProfileSchema = exports.changePasswordFlag = exports.logoutFlag = void 0;
+exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.logoutSchema = exports.getProfileSchema = exports.changePasswordFlag = exports.logoutFlag = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
 var logoutFlag;
@@ -54,4 +54,18 @@ exports.resetPasswordSchema = zod_1.default.object({
         confirmNewPassword: zod_1.default.string(),
         otp: validation_middleware_1.generalFields.otp
     }).superRefine(validation_middleware_1.generalFields.confirmPassword)
+});
+exports.profileImageSchema = zod_1.default.object({
+    body: zod_1.default.strictObject({
+        contentType: zod_1.default.string().optional(),
+        originalName: zod_1.default.string().optional()
+    })
+});
+exports.coverImagesSchema = zod_1.default.object({
+    body: zod_1.default.strictObject({
+        files: zod_1.default.array(zod_1.default.strictObject({
+            contentType: zod_1.default.string(),
+            originalName: zod_1.default.string()
+        })).optional()
+    })
 });

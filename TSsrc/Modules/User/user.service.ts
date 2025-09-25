@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
-import { IgetProfileDTO, IlogoutDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO } from "./user.dto";
-import { changePasswordFlag, logoutFlag } from "./user.validation";
+import { IgetProfileDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO } from "./user.dto";
+import { changePasswordFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
@@ -24,28 +24,6 @@ class UserService {
         if(!Tuser)
             throw new NotFoundError({message:"User not found"});
         return successHandler({ res, statusCode: 200, message: "Success", data: {user: Tuser} });
-    }
-    public logout = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const {flag} : IlogoutDTO = req.body;
-        let statusCode = 200;
-        switch (flag) {
-            case logoutFlag.ALL:
-                await this._userModel.findOneAndUpdate({
-                    filter: { _id: req.decodedToken?._id },
-                    update: { credentailsUpdatedAt: new Date() }
-                })
-                break;
-            case logoutFlag.ONLY:
-                await this._tokenModel.revokeToken(req.decodedToken as JwtPayload);
-                statusCode = 201
-                break;
-        }
-        return successHandler({ res, statusCode, message: "logged out successfully" });
-    }
-    public refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const credentials:Credentials = await createCredentials(req.user as HUserDocument);
-        await this._tokenModel.revokeToken(req.decodedToken as JwtPayload);
-        return successHandler({ res, statusCode: 201, message: "Success", data: credentials });
     }
     updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const {fullName, phone,gender} : IupdateProfileDTO = req.body;

@@ -100,7 +100,7 @@ export const decodeToken = async ({
     const user = await userModel.findOne({filter:{_id:decodedToken._id} , lean:true})
     if(!user) 
         throw new NotFoundError({message:"Account not registered"})
-    if(user.credentailsUpdatedAt?.getTime() > decodedToken.iat * 1000)
+    if(Number(user.credentailsUpdatedAt?.getTime()) > decodedToken.iat * 1000)
         throw new UnauthorizedError({message:"Invalid or Expired Token"})
     return {user , decodedToken}
 }

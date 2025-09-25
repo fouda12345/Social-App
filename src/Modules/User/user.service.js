@@ -21,28 +21,6 @@ class UserService {
             throw new error_handler_1.NotFoundError({ message: "User not found" });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
     };
-    logout = async (req, res, next) => {
-        const { flag } = req.body;
-        let statusCode = 200;
-        switch (flag) {
-            case user_validation_1.logoutFlag.ALL:
-                await this._userModel.findOneAndUpdate({
-                    filter: { _id: req.decodedToken?._id },
-                    update: { credentailsUpdatedAt: new Date() }
-                });
-                break;
-            case user_validation_1.logoutFlag.ONLY:
-                await this._tokenModel.revokeToken(req.decodedToken);
-                statusCode = 201;
-                break;
-        }
-        return (0, success_handler_1.successHandler)({ res, statusCode, message: "logged out successfully" });
-    };
-    refreshToken = async (req, res, next) => {
-        const credentials = await (0, jwt_utils_1.createCredentials)(req.user);
-        await this._tokenModel.revokeToken(req.decodedToken);
-        return (0, success_handler_1.successHandler)({ res, statusCode: 201, message: "Success", data: credentials });
-    };
     updateProfile = async (req, res, next) => {
         const { fullName, phone, gender } = req.body;
         const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { fullName, phone, gender } });
@@ -103,16 +81,24 @@ class UserService {
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "otp sent to your email" });
     };
     uploadProfileImage = async (req, res, next) => {
-        if (!req.file)
-            throw new error_handler_1.BadRequestError({ message: "No file uploaded" });
-        const key = await (0, s3_config_1.uploadFile)({ file: req.file, path: `users/${req.user?._id}/profileImage` });
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { key } });
+        const file = req.body;
+        const data = await (0, s3_config_1.uploadFile)({
+            file: req.file || file,
+            path: `users/${req.user?._id}/profileImage`
+        });
+        if (!await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { profileImage: data.key } }))
+            throw new error_handler_1.AppError({ message: "Something went wrong" });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
     uploadCoverImages = async (req, res, next) => {
-        if (!req.files)
-            throw new error_handler_1.BadRequestError({ message: "No file uploaded" });
-        const keys = await (0, s3_config_1.uploadFiles)({ files: req.files, path: `users/${req.user?._id}/coverImages` });
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { keys } });
+        const files = req.body;
+        const data = await (0, s3_config_1.uploadFile)({
+            files: req.files || files,
+            path: `users/${req.user?._id}/coverImages`
+        });
+        if (!await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { coverImages: [...data.map(({ key }) => key)] } }))
+            throw new error_handler_1.AppError({ message: "Something went wrong" });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
 }
 exports.default = new UserService();
