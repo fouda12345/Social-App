@@ -7,7 +7,7 @@ const email_event_1 = require("../../Utils/Events/email.event");
 const otp_utils_1 = require("../../Utils/Security/otp.utils");
 const hash_utils_1 = require("../../Utils/Security/hash.utils");
 const jwt_utils_1 = require("../../Utils/Security/jwt.utils");
-const user_validation_1 = require("../User/user.validation");
+const auth_validation_1 = require("./auth.validation");
 const token_reposetory_1 = require("../../DB/reposetories/token.reposetory");
 class AuthService {
     _userModel = new user_reposetory_1.UserReposetory();
@@ -39,14 +39,13 @@ class AuthService {
             case !Boolean(checkUser):
                 throw new error_handler_1.NotFoundError({ message: "User not found Invalid Email" });
             case checkUser.emailOTP.createdAt < new Date(Date.now() - (Number(process.env.CODE_EXPIRATION_TIME) * 60 * 1000)):
-                throw new error_handler_1.BadRequestError({ message: "OTP expired" });
+                throw new error_handler_1.BadRequestError({ message: "Invalid OTP/OTP expired" });
             case !await (0, hash_utils_1.compareHash)({ data: otp, hash: checkUser.emailOTP.otp }):
-                throw new error_handler_1.BadRequestError({ message: "Invalid OTP" });
+                throw new error_handler_1.BadRequestError({ message: "Invalid OTP/OTP expired" });
         }
-        const user = await this._userModel.findOneAndUpdate({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } }, update: { confirmedEmail: new Date(), $unset: { emailOTP: 1 } } });
-        if (!user)
+        if (!await this._userModel.findOneAndUpdate({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } }, update: { confirmedEmail: new Date(), $unset: { emailOTP: 1 } } }))
             throw new error_handler_1.AppError({ message: "Error confirming email" });
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Email verified successfully", data: user });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Email verified successfully" });
     };
     sendConfirmEmail = async (req, res, next) => {
         const { email } = req.body;
@@ -82,13 +81,13 @@ class AuthService {
         const { flag } = req.body;
         let statusCode = 200;
         switch (flag) {
-            case user_validation_1.logoutFlag.ALL:
+            case auth_validation_1.logoutFlag.ALL:
                 await this._userModel.findOneAndUpdate({
                     filter: { _id: req.decodedToken?._id },
                     update: { credentailsUpdatedAt: new Date() }
                 });
                 break;
-            case user_validation_1.logoutFlag.ONLY:
+            case auth_validation_1.logoutFlag.ONLY:
                 await this._tokenModel.revokeToken(req.decodedToken);
                 statusCode = 201;
                 break;

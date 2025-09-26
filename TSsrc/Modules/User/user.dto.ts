@@ -1,6 +1,6 @@
 import z from "zod";
-import { changePasswordSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, logoutSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
-export type IlogoutDTO = z.infer<typeof logoutSchema>["body"]
+import { changePasswordSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
+
 export type IgetProfileDTO = z.infer<typeof getProfileSchema>["params"]
 export type IupdateProfileDTO = z.infer<typeof updateProfileSchema>["body"]
 export type IchangePasswordDTO = z.infer<typeof changePasswordSchema>["body"]

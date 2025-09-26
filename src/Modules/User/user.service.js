@@ -10,13 +10,26 @@ const hash_utils_1 = require("../../Utils/Security/hash.utils");
 const otp_utils_1 = require("../../Utils/Security/otp.utils");
 const email_event_1 = require("../../Utils/Events/email.event");
 const s3_config_1 = require("../../Utils/upload/S3 Bucket/s3.config");
+const DB_reposetory_1 = require("../../DB/reposetories/DB.reposetory");
+const asset_model_1 = require("../../DB/Models/asset.model");
 class UserService {
     _userModel = new user_reposetory_1.UserReposetory();
     _tokenModel = new token_reposetory_1.TokenReposetory();
+    _assetModel = new DB_reposetory_1.DBReposetory(asset_model_1.assetModel);
     constructor() { }
     getProfile = async (req, res, next) => {
         const { id } = req.params || undefined;
-        const Tuser = id == req.user?._id || !id ? req.user : await this._userModel.findOne({ filter: { _id: id, confirmedEmail: { $exists: true } }, lean: true, select: "-__v -_id firstName middleName lastName email fullName role gender phone" });
+        const Tuser = id == req.user?._id || !id ?
+            req.user :
+            await this._userModel.findOne({
+                filter: {
+                    _id: id,
+                    confirmedEmail: {
+                        $exists: true
+                    }
+                },
+                select: "firstName middleName lastName email fullName role gender phone"
+            });
         if (!Tuser)
             throw new error_handler_1.NotFoundError({ message: "User not found" });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
@@ -86,7 +99,21 @@ class UserService {
             file: req.file || file,
             path: `users/${req.user?._id}/profileImage`
         });
-        if (!await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { profileImage: data.key } }))
+        if (req.user?.profileImage && !await (0, s3_config_1.deleteFiles)({ key: req.user?.profileImage }))
+            throw new error_handler_1.AppError({ message: "Something went wrong" });
+        if (!await this._userModel.findOneAndUpdate({
+            filter: {
+                _id: req.user?._id
+            },
+            update: {
+                profileImage: data.key
+            }
+        }) || !await this._assetModel.create({
+            data: [{
+                    key: data.key,
+                    userId: req.user?._id
+                }]
+        }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
@@ -96,8 +123,37 @@ class UserService {
             files: req.files || files,
             path: `users/${req.user?._id}/coverImages`
         });
-        if (!await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { coverImages: [...data.map(({ key }) => key)] } }))
+        if (!await this._userModel.findOneAndUpdate({
+            filter: {
+                _id: req.user?._id
+            },
+            update: {
+                coverImages: [...(req.user?.coverImages || []), ...data.map(({ key }) => key)]
+            }
+        }) || !await this._assetModel.create({
+            data: [...data.map(({ key }) => {
+                    return {
+                        key,
+                        userId: req.user?._id
+                    };
+                })]
+        }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
+    };
+    deleteAssets = async (req, res, next) => {
+        const { key, keys } = req.body;
+        let data = {};
+        if (key) {
+            if (!await this._tokenModel.findOne({ filter: { key, userId: req.user?._id } }))
+                throw new error_handler_1.UnauthorizedError({ message: "you don't have permission" });
+            data = await (0, s3_config_1.deleteFiles)({ key });
+        }
+        if (keys && keys.length > 0) {
+            if (!await Promise.all(keys.map(async (key) => this._tokenModel.findOne({ filter: { key, userId: req.user?._id } }))))
+                throw new error_handler_1.UnauthorizedError({ message: "you don't have permission" });
+            data = await (0, s3_config_1.deleteFiles)({ keys, Quiet: true });
+        }
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
 }

@@ -16,6 +16,8 @@ export const auth = ({
     return async (req:Request, res:Response, next:NextFunction) : Promise<void> => {
         if(!req.headers.authorization && required)
             throw new BadRequestError({message:"Authorization header is required"});
+        if(!req.headers.authorization && !required) 
+            return next();
         const {user , decodedToken} : {user : HUserDocument , decodedToken : JwtPayload} = await decodeToken({authorization : req.headers.authorization as string , tokenType});
         if(accessRoles?.length > 0 && !accessRoles.includes(user.role as RoleEnum))
             throw new ForbiddenError({message:"You are not authorized to access this route"});

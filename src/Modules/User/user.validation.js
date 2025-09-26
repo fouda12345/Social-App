@@ -3,14 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.logoutSchema = exports.getProfileSchema = exports.changePasswordFlag = exports.logoutFlag = void 0;
+exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.changePasswordFlag = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
-var logoutFlag;
-(function (logoutFlag) {
-    logoutFlag["ALL"] = "ALL";
-    logoutFlag["ONLY"] = "ONLY";
-})(logoutFlag || (exports.logoutFlag = logoutFlag = {}));
 var changePasswordFlag;
 (function (changePasswordFlag) {
     changePasswordFlag["ALL"] = "ALL";
@@ -21,11 +16,6 @@ exports.getProfileSchema = zod_1.default.object({
     params: zod_1.default.strictObject({
         id: zod_1.default.string().optional()
     }).superRefine(validation_middleware_1.generalFields.checkId)
-});
-exports.logoutSchema = zod_1.default.object({
-    body: zod_1.default.strictObject({
-        flag: zod_1.default.enum(logoutFlag).default(logoutFlag.ONLY)
-    })
 });
 exports.updateProfileSchema = zod_1.default.object({
     body: zod_1.default.strictObject({
@@ -67,5 +57,17 @@ exports.coverImagesSchema = zod_1.default.object({
             contentType: zod_1.default.string(),
             originalName: zod_1.default.string()
         })).optional()
+    })
+});
+exports.deleteAssetSchema = zod_1.default.object({
+    body: zod_1.default.strictObject({
+        key: zod_1.default.string().optional(),
+        keys: zod_1.default.array(zod_1.default.string()).optional()
+    }).superRefine((data, ctx) => {
+        if (!data.key && !data.keys?.length)
+            ctx.addIssue({
+                code: "custom",
+                message: "key or keys is required"
+            });
     })
 });

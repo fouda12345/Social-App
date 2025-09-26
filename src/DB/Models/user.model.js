@@ -82,8 +82,8 @@ exports.userShema = new mongoose_1.Schema({
 });
 exports.userShema.pre('save', async function (next) {
     if (this.isModified('password')) {
-        this.oldPasswords.push(this.password);
         this.password = await (0, hash_utils_1.generateHash)({ data: this.password });
+        this.oldPasswords.push(this.password);
     }
     if (this.isModified('emailOTP'))
         this.emailOTP.otp = await (0, hash_utils_1.generateHash)({ data: this.emailOTP.otp });

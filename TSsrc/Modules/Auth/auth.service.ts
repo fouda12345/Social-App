@@ -8,8 +8,8 @@ import { generateOtp } from "../../Utils/Security/otp.utils";
 import { compareHash } from "../../Utils/Security/hash.utils";
 import { GenderEnum, HUserDocument } from "../../DB/Models/user.model";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
-import { IlogoutDTO } from "../User/user.dto";
-import { logoutFlag } from "../User/user.validation";
+import { IlogoutDTO } from "./auth.dto"; 
+import { logoutFlag } from "./auth.validation"; 
 import { JwtPayload } from "jsonwebtoken";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 
@@ -54,15 +54,15 @@ class AuthService {
             case !Boolean(checkUser):
                 throw new NotFoundError({ message: "User not found Invalid Email" });
             case checkUser.emailOTP.createdAt < new Date(Date.now() - (Number(process.env.CODE_EXPIRATION_TIME) * 60 * 1000)):
-                throw new BadRequestError({ message: "OTP expired" });
+                throw new BadRequestError({ message: "Invalid OTP/OTP expired" });
             case ! await compareHash({ data: otp, hash: checkUser.emailOTP.otp }):
-                throw new BadRequestError({ message: "Invalid OTP" });
+                throw new BadRequestError({ message: "Invalid OTP/OTP expired" });
         }
 
-        const user = await this._userModel.findOneAndUpdate({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } }, update: { confirmedEmail: new Date(), $unset: { emailOTP: 1 } } });
-        if (!user) throw new AppError({ message: "Error confirming email" });
+        if (!await this._userModel.findOneAndUpdate({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } }, update: { confirmedEmail: new Date(), $unset: { emailOTP: 1 } } }))
+            throw new AppError({ message: "Error confirming email" });
 
-        return successHandler({ res, statusCode: 200, message: "Email verified successfully", data: user });
+        return successHandler({ res, statusCode: 200, message: "Email verified successfully" });
     }
 
     public sendConfirmEmail: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {

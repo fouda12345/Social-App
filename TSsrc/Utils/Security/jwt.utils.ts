@@ -66,7 +66,7 @@ export const createCredentials = async (user: HUserDocument): Promise<Credential
         }
     })
     const refreshToken = await generateToken({
-        payload: {id: user._id,},
+        payload: {_id: user._id,},
         secret: signatures.refreshSecret,
         options: {
             expiresIn: process.env.JWT_REFRESH_EXPIRE_TIME as StringValue|number,

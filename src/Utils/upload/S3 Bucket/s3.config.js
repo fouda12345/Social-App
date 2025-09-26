@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFile = exports.uploadFile = exports.createPreSignedUrl = exports.uploadLargeFile = exports.uploadSmallFile = exports.S3Config = exports.isIPresignedUrlFile = exports.creatS3WriteStreamPipeline = void 0;
+exports.deleteFiles = exports.getFile = exports.uploadFile = exports.createPreSignedUrl = exports.uploadLargeFile = exports.uploadSmallFile = exports.S3Config = exports.isIPresignedUrlFile = exports.creatS3WriteStreamPipeline = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const uuid_1 = require("uuid");
 const node_fs_1 = require("node:fs");
@@ -131,3 +131,17 @@ const getFile = async ({ Bucket = process.env.S3_BUCKET_NAME, key, expiresIn = 1
     return await (0, exports.creatS3WriteStreamPipeline)(response.Body, res);
 };
 exports.getFile = getFile;
+async function deleteFile({ Bucket = process.env.S3_BUCKET_NAME, key, keys, Quiet = false }) {
+    let command;
+    switch (true) {
+        case Boolean(key):
+            command = new client_s3_1.DeleteObjectCommand({ Bucket, Key: key });
+            return await (0, exports.S3Config)().send(command);
+        case keys && keys.length > 0:
+            command = new client_s3_1.DeleteObjectsCommand({ Bucket, Delete: { Quiet, Objects: keys.map(key => ({ Key: key })) } });
+            return await (0, exports.S3Config)().send(command);
+        default:
+            throw new error_handler_1.BadRequestError({ message: "failed to delete file missing data" });
+    }
+}
+exports.deleteFiles = deleteFile;

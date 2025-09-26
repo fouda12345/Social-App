@@ -1,10 +1,7 @@
 import z from "zod"
 import { generalFields, passwordRegex } from "../../Middlewares/validation.middleware"
 
-export enum logoutFlag {
-    ALL = "ALL",
-    ONLY = "ONLY"
-}
+
 
 export enum changePasswordFlag {
     ALL = "ALL",   /// logout all devices
@@ -16,11 +13,6 @@ export const getProfileSchema = z.object({
     params : z.strictObject({
         id : z.string().optional()
     }).superRefine(generalFields.checkId)
-})
-export const logoutSchema = z.object({
-    body : z.strictObject({
-        flag: z.enum(logoutFlag).default(logoutFlag.ONLY)
-    })
 })
 
 export const updateProfileSchema = z.object({

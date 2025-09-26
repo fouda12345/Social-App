@@ -7,6 +7,8 @@ const auth = ({ required = true, tokenType = jwt_utils_1.TokenType.ACCESS, acces
     return async (req, res, next) => {
         if (!req.headers.authorization && required)
             throw new error_handler_1.BadRequestError({ message: "Authorization header is required" });
+        if (!req.headers.authorization && !required)
+            return next();
         const { user, decodedToken } = await (0, jwt_utils_1.decodeToken)({ authorization: req.headers.authorization, tokenType });
         if (accessRoles?.length > 0 && !accessRoles.includes(user.role))
             throw new error_handler_1.ForbiddenError({ message: "You are not authorized to access this route" });

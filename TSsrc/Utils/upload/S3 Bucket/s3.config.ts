@@ -9,7 +9,6 @@ import { Response } from "express";
 import { successHandler } from "../../Handlers/success.handler";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream";
-import { de } from "zod/v4/locales";
 
 export const creatS3WriteStreamPipeline = promisify(pipeline);
 export type IPresignedUrlData = {

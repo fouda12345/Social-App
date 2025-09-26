@@ -108,8 +108,8 @@ export const userShema = new Schema<IUser>({
 
 userShema.pre('save', async function (next) {
     if (this.isModified('password')) {
-        this.oldPasswords.push(this.password);
         this.password = await generateHash({data:this.password})
+        this.oldPasswords.push(this.password);
     }
     if (this.isModified('emailOTP')) this.emailOTP.otp = await generateHash({data:this.emailOTP.otp});
     if (this.isModified('passwordOTP')) this.passwordOTP.otp = await generateHash({data:this.passwordOTP.otp});

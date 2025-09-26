@@ -14,7 +14,6 @@ import { emailEvent } from "../../Utils/Events/email.event";
 import { deleteFiles, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { DBReposetory } from "../../DB/reposetories/DB.reposetory";
 import { assetModel, IAsset } from "../../DB/Models/asset.model";
-import { promise } from "zod";
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
 import { Types } from "mongoose";
 
@@ -26,7 +25,18 @@ class UserService {
     constructor() { }
     public getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
-        const Tuser: HUserDocument | undefined = id == req.user?._id || !id ? req.user : await this._userModel.findOne({ filter: { _id: id, confirmedEmail: { $exists: true } }, lean: true, select: "-__v -_id firstName middleName lastName email fullName role gender phone" });
+        const Tuser: HUserDocument | undefined = 
+            id == req.user?._id || !id ? 
+            req.user : 
+            await this._userModel.findOne({ 
+                filter: { 
+                    _id: id, 
+                    confirmedEmail: { 
+                        $exists: true 
+                    } 
+                }
+                ,select: "firstName middleName lastName email fullName role gender phone"
+            });
         if (!Tuser)
             throw new NotFoundError({ message: "User not found" });
         return successHandler({ res, statusCode: 200, message: "Success", data: { user: Tuser } });

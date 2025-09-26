@@ -2,11 +2,9 @@ import { Router } from "express";
 import authServices from "./auth.service";
 import { validate } from "../../Middlewares/validation.middleware";
 import { confirmEmailSchema, loginSchema, sendConfirmEmailSchema, signupSchema } from "./auth.validation";
-import { logoutSchema } from "../User/user.validation";
+import { logoutSchema } from "./auth.validation";
 import { auth } from "../../Middlewares/auth.middleware";
 import { TokenType } from "../../Utils/Security/jwt.utils";
-import { endpoint } from "../User/user.authorization";
-
 
 const router: Router = Router();
 
@@ -16,9 +14,7 @@ router.post("/send-confirm-email", validate(sendConfirmEmailSchema), authService
 router.post("/login",validate(loginSchema), authServices.login);
 router.post(
     "/logout",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     validate(logoutSchema),
     authServices.logout
 );
@@ -27,7 +23,6 @@ router.get(
     "/refresh-token",
     auth({
         tokenType:TokenType.REFRESH,
-        accessRoles:endpoint.all
     }),
     authServices.refreshToken
 );

@@ -1,16 +1,15 @@
 import { Router } from "express";
 import userServices from "./user.service";
 import { auth } from "../../Middlewares/auth.middleware";
-import { endpoint } from "./user.authorization";
 import { validate } from "../../Middlewares/validation.middleware";
 import { changePasswordSchema, coverImagesSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
 import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
-const router   = Router();
+const router = Router();
 
 router.get(
     "/profile{/:id}",
     auth({
-        accessRoles:endpoint.all
+        required: false
     }),
     validate(getProfileSchema),
     userServices.getProfile
@@ -18,18 +17,14 @@ router.get(
 
 router.patch(
     "/update-profile",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     validate(updateProfileSchema),
     userServices.updateProfile
 );
 
 router.patch(
     "/change-password",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     validate(changePasswordSchema),
     userServices.changePassword
 );
@@ -48,9 +43,7 @@ router.patch(
 
 router.patch(
     "/profile-image",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     cloudFileUpload({
         filter:fileFilter.image,
         maxSize:5,
@@ -62,9 +55,7 @@ router.patch(
 
 router.patch(
     "/covere-images",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     cloudFileUpload({
         filter:fileFilter.image,
         maxSize:5,
@@ -76,9 +67,7 @@ router.patch(
 
 router.delete(
     "/delete-asset",
-    auth({
-        accessRoles:endpoint.all
-    }),
+    auth(),
     userServices.deleteAssets
 )
 
