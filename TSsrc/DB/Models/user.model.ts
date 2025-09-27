@@ -32,6 +32,7 @@ export interface IUser {
     phone?: string;
     profileImage?: string;
     coverImages?: string[];
+    assets?:[string];
     credentailsUpdatedAt?: Date;
     createdAt?: Date;
     updatedAt?: Date;
@@ -94,6 +95,7 @@ export const userShema = new Schema<IUser>({
     },
     profileImage: String,
     coverImages: [String],
+    assets:[String],
     credentailsUpdatedAt: Date
 },
 {

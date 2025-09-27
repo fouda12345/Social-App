@@ -12,16 +12,13 @@ import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
 import { deleteFiles, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
-import { DBReposetory } from "../../DB/reposetories/DB.reposetory";
-import { assetModel, IAsset } from "../../DB/Models/asset.model";
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-import { Types } from "mongoose";
+
 
 
 class UserService {
     private _userModel = new UserReposetory();
     private _tokenModel = new TokenReposetory();
-    private _assetModel = new DBReposetory<IAsset>(assetModel);
     constructor() { }
     public getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
@@ -115,13 +112,9 @@ class UserService {
                     _id: req.user?._id
                 },
                 update: {
-                    profileImage: data.key
+                    profileImage: data.key,
+                    assets: [...(req.user?.assets || []), data.key]
                 }
-            }) || !await this._assetModel.create({
-                data: [{
-                    key: data.key,
-                    userId: req.user?._id as Types.ObjectId
-                }]
             })
         )
             throw new AppError({ message: "Something went wrong" });
@@ -133,22 +126,17 @@ class UserService {
             files: req.files as Express.Multer.File[] || files,
             path: `users/${req.user?._id}/coverImages`
         })
+        const keys : string[] = [...data.map(({ key }) => key)]
         if (
             !await this._userModel.findOneAndUpdate({
                 filter: {
                     _id: req.user?._id
                 },
                 update: {
-                    coverImages: [...(req.user?.coverImages || []), ...data.map(({ key }) => key)]
+                    coverImages: [...(req.user?.coverImages || []), ...keys],
+                    assets: [...(req.user?.assets || []), ...keys]
                 }
-            }) || !await this._assetModel.create({
-                data: [...data.map(({ key }) => {
-                    return {
-                        key,
-                        userId: req.user?._id as Types.ObjectId
-                    }
-                })]
-            })
+            }) 
         )
             throw new AppError({ message: "Something went wrong" });
         return successHandler({ res, statusCode: 200, message: "Success", data });
@@ -157,13 +145,15 @@ class UserService {
         const { key, keys }: IdeleteAssetDTO = req.body;
         let data: DeleteObjectCommandOutput | DeleteObjectsCommandOutput | {} = {}
         if (key) {
-            if (!await this._tokenModel.findOne({ filter: { key, userId: req.user?._id } }))
+            if (!req.user?.assets?.includes(key))
                 throw new UnauthorizedError({ message: "you don't have permission" });
             data = await deleteFiles({ key });
         }
         if (keys && keys.length > 0) {
-            if (!await Promise.all(keys.map(async (key) => this._tokenModel.findOne({ filter: { key, userId: req.user?._id } }))))
-                throw new UnauthorizedError({ message: "you don't have permission" });
+            keys.forEach(k => {
+                if (!req.user?.assets?.includes(k))
+                    throw new UnauthorizedError({ message: "you don't have permission" });
+            })
             data = await deleteFiles({ keys, Quiet: true });
         }
         return successHandler({ res, statusCode: 200, message: "Success", data });
