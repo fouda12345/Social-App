@@ -70,6 +70,7 @@ exports.userShema = new mongoose_1.Schema({
     },
     profileImage: String,
     coverImages: [String],
+    assets: [String],
     credentailsUpdatedAt: Date
 }, {
     timestamps: true,
