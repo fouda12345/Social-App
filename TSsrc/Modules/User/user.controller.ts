@@ -2,7 +2,7 @@ import { Router } from "express";
 import userServices from "./user.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
-import { changePasswordSchema, coverImagesSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
+import { changePasswordSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
 import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
 const router = Router();
 
@@ -68,6 +68,7 @@ router.patch(
 router.delete(
     "/delete-asset",
     auth(),
+    validate(deleteAssetSchema),
     userServices.deleteAssets
 )
 

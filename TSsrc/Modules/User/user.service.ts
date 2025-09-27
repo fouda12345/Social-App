@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
-import { IgetProfileDTO, IchangePasswordDTO, IupdateProfileDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO, IdeleteAssetDTO } from "./user.dto";
+import { IgetProfileDTO, IchangePasswordDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO, IdeleteAssetDTO } from "./user.dto";
 import { changePasswordFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
@@ -39,8 +39,7 @@ class UserService {
         return successHandler({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
     }
     updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const { fullName, phone, gender }: IupdateProfileDTO = req.body;
-        const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { fullName, phone, gender } });
+        const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
         return successHandler({ res, statusCode: 200, message: "Success", data: { updtedUser } });
     }
     changePassword = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {

@@ -27,5 +27,5 @@ router.patch("/covere-images", (0, auth_middleware_1.auth)(), (0, cloud_multer_1
     maxSize: 5,
     storageApproach: cloud_multer_1.StorageApproach.DISK
 }).array("coverImage", 5), (0, validation_middleware_1.validate)(user_validation_1.coverImagesSchema), user_service_1.default.uploadCoverImages);
-router.delete("/delete-asset", (0, auth_middleware_1.auth)(), user_service_1.default.deleteAssets);
+router.delete("/delete-asset", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.deleteAssetSchema), user_service_1.default.deleteAssets);
 exports.default = router;

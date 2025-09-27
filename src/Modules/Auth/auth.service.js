@@ -14,11 +14,11 @@ class AuthService {
     _tokenModel = new token_reposetory_1.TokenReposetory();
     constructor() { }
     signup = async (req, res, next) => {
-        const { fullName, email, password, phone, gender } = req.body;
+        const { email } = req.body;
         const checkUser = await this._userModel.findOne({ filter: { email }, select: "email", lean: true });
         if (checkUser)
             throw new error_handler_1.ConflictError({ message: "User already exists", options: { cause: checkUser } });
-        const user = await this._userModel.createUser({ data: { fullName, email, password, phone: phone, gender: gender } });
+        const user = await this._userModel.createUser({ data: { ...req.body } });
         const otp = (0, otp_utils_1.generateOtp)();
         user.emailOTP = {
             otp,
@@ -27,7 +27,7 @@ class AuthService {
         await user.save();
         email_event_1.emailEvent.emit("confirmEmail", {
             to: user.email,
-            fullName,
+            fullName: user.fullName,
             otp
         });
         return (0, success_handler_1.successHandler)({ res, statusCode: 201, message: "User created successfully", data: user });

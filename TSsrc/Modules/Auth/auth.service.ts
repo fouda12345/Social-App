@@ -6,7 +6,7 @@ import { successHandler } from "../../Utils/Handlers/success.handler";
 import { emailEvent } from "../../Utils/Events/email.event";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { compareHash } from "../../Utils/Security/hash.utils";
-import { GenderEnum, HUserDocument } from "../../DB/Models/user.model";
+import { HUserDocument } from "../../DB/Models/user.model";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
 import { IlogoutDTO } from "./auth.dto"; 
 import { logoutFlag } from "./auth.validation"; 
@@ -19,13 +19,13 @@ class AuthService {
     private _tokenModel = new TokenReposetory();
     constructor() { }
     public signup: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const { fullName, email, password, phone, gender }: ISignUpDTO = req.body;
+        const {email}: ISignUpDTO = req.body;
 
         const checkUser = await this._userModel.findOne({ filter: { email }, select: "email", lean: true });
 
         if (checkUser) throw new ConflictError({ message: "User already exists", options: { cause: checkUser } });
 
-        const user = await this._userModel.createUser({ data: { fullName, email, password, phone: phone as string, gender: gender as GenderEnum } });
+        const user = await this._userModel.createUser({ data: { ...req.body}});
 
         const otp = generateOtp();
 
@@ -38,7 +38,7 @@ class AuthService {
 
         emailEvent.emit("confirmEmail", {
             to: user.email,
-            fullName,
+            fullName: user.fullName,
             otp
         });
 

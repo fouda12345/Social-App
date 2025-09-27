@@ -32,8 +32,7 @@ class UserService {
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
     };
     updateProfile = async (req, res, next) => {
-        const { fullName, phone, gender } = req.body;
-        const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: { fullName, phone, gender } });
+        const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { updtedUser } });
     };
     changePassword = async (req, res, next) => {
