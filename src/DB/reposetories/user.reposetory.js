@@ -5,8 +5,10 @@ const user_model_1 = require("../Models/user.model");
 const DB_reposetory_1 = require("./DB.reposetory");
 const error_handler_1 = require("../../Utils/Handlers/error.handler");
 class UserReposetory extends DB_reposetory_1.DBReposetory {
-    constructor() {
-        super(user_model_1.userModel);
+    model;
+    constructor(model = user_model_1.userModel) {
+        super(model);
+        this.model = model;
     }
     async createUser({ data, options }) {
         let users = [data];

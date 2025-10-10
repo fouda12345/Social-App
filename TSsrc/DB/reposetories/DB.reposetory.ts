@@ -4,7 +4,7 @@ import { CreateOptions, HydratedDocument, Model, PopulateOptions, ProjectionType
 
 export class DBReposetory<DocType> {
 
-    constructor(protected model: Model<DocType>) { }
+    constructor(protected readonly model: Model<DocType>) { }
     async create({
         data,options={validateBeforeSave: true}
     }:{
@@ -25,19 +25,36 @@ export class DBReposetory<DocType> {
         options?:QueryOptions<DocType>,
         populate?:PopulateOptions | []
         lean?:boolean
-    }) : Promise<HydratedDocument<DocType>> {
-        return await this.model.findOne(filter,options).select(select).populate(populate).lean(lean) as HydratedDocument<DocType>;
+    }) : Promise<HydratedDocument<DocType>| null | any>{
+        return await this.model.findOne(filter,options).select(select).populate(populate).lean<DocType>(lean);
     }
+
+    async find({
+        filter = {},
+        select = "",
+        options = {},
+        populate = [],
+        lean = false
+    } : {
+        filter?:RootFilterQuery<DocType>,
+        select?:ProjectionType<DocType>,
+        options?:QueryOptions<DocType>,
+        populate?:PopulateOptions | []
+        lean?:boolean
+    }) : Promise<HydratedDocument<DocType>[] | [] | any>{
+        return await this.model.find(filter,options).select(select).populate(populate).lean<DocType[]>(lean);
+    }
+        
 
     async findOneAndUpdate({
         filter,
-        update = {$inc:{__v : 1}},
-        options = {new:true}
+        update = {},
+        options = {}
     } : {
         filter:RootFilterQuery<DocType>,
         update:UpdateQuery<DocType>,
         options?:QueryOptions<DocType>
     }): Promise<HydratedDocument<DocType> | null> {
-        return await this.model.findOneAndUpdate(filter,update,options);
+        return await this.model.findOneAndUpdate(filter,{...update,$inc:{__v:1}},{...options,runValidators:true,new:true});
     }
 }

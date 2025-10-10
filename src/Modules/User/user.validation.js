@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.changePasswordFlag = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
+const cloud_multer_1 = require("../../Utils/upload/multer/cloud.multer");
 var changePasswordFlag;
 (function (changePasswordFlag) {
     changePasswordFlag["ALL"] = "ALL";
@@ -14,8 +15,8 @@ var changePasswordFlag;
 })(changePasswordFlag || (exports.changePasswordFlag = changePasswordFlag = {}));
 exports.getProfileSchema = zod_1.default.object({
     params: zod_1.default.strictObject({
-        id: zod_1.default.string().optional()
-    }).superRefine(validation_middleware_1.generalFields.checkId)
+        id: validation_middleware_1.generalFields.id.optional()
+    })
 });
 exports.updateProfileSchema = zod_1.default.object({
     body: zod_1.default.strictObject({
@@ -47,9 +48,33 @@ exports.resetPasswordSchema = zod_1.default.object({
 });
 exports.profileImageSchema = zod_1.default.object({
     body: zod_1.default.strictObject({
-        contentType: zod_1.default.string().optional(),
-        originalName: zod_1.default.string().optional()
-    })
+        file: zod_1.default.strictObject({
+            contentType: zod_1.default.string(),
+            originalName: zod_1.default.string()
+        }).optional()
+    }),
+    file: zod_1.default.union([validation_middleware_1.generalFields.file(cloud_multer_1.fileFilter.image, 5), zod_1.default.strictObject({
+            contentType: zod_1.default.string().optional(),
+            originalName: zod_1.default.string().optional()
+        })]).optional()
+}).superRefine((data, ctx) => {
+    if (process.env.UPLOAD_TYPE === "PRE_SIGNED") {
+        if (!data.body.file)
+            ctx.addIssue({
+                code: "custom",
+                path: ["body", "files"],
+                message: "file is required"
+            });
+        data.file = data.body.file;
+    }
+    delete data.body.file;
+    if (!data.file) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["files"],
+            message: "file is required"
+        });
+    }
 });
 exports.coverImagesSchema = zod_1.default.object({
     body: zod_1.default.strictObject({
@@ -57,7 +82,32 @@ exports.coverImagesSchema = zod_1.default.object({
             contentType: zod_1.default.string(),
             originalName: zod_1.default.string()
         })).optional()
-    })
+    }),
+    files: zod_1.default.array(zod_1.default.union([
+        validation_middleware_1.generalFields.file(cloud_multer_1.fileFilter.image, 5),
+        zod_1.default.strictObject({
+            contentType: zod_1.default.string(),
+            originalName: zod_1.default.string()
+        })
+    ])).max(5).optional()
+}).superRefine((data, ctx) => {
+    if (process.env.UPLOAD_TYPE === "PRE_SIGNED") {
+        if (!data.body.files?.length)
+            ctx.addIssue({
+                code: "custom",
+                path: ["body", "files"],
+                message: "files is required"
+            });
+        data.files = data.body.files;
+    }
+    delete data.body.files;
+    if (!data.files?.length) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["files"],
+            message: "files is required"
+        });
+    }
 });
 exports.deleteAssetSchema = zod_1.default.object({
     body: zod_1.default.strictObject({

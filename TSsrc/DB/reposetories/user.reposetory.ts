@@ -1,12 +1,12 @@
-import { CreateOptions } from "mongoose";
+import { CreateOptions, Model } from "mongoose";
 import { IUser, HUserDocument, userModel } from "../Models/user.model";
 import { DBReposetory } from "./DB.reposetory";
 import { AppError } from "../../Utils/Handlers/error.handler";
 
 
 export class UserReposetory extends DBReposetory<IUser> {
-    constructor() {
-        super(userModel);
+    constructor(protected override readonly model:Model<IUser> = userModel) {
+        super(model);
     }
 
     public async createUser({

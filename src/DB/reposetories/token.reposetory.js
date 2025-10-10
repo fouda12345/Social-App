@@ -5,8 +5,10 @@ const DB_reposetory_1 = require("./DB.reposetory");
 const token_model_1 = require("../Models/token.model");
 const error_handler_1 = require("../../Utils/Handlers/error.handler");
 class TokenReposetory extends DB_reposetory_1.DBReposetory {
-    constructor() {
-        super(token_model_1.tokenModel);
+    model;
+    constructor(model = token_model_1.tokenModel) {
+        super(model);
+        this.model = model;
     }
     revokeToken = async (decodedToken) => {
         const [token] = await this.create({

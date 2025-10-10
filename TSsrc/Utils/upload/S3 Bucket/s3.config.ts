@@ -124,6 +124,7 @@ export const createPreSignedUrl = async ({
 }
 async function uploadFileFunction({ Bucket, ACL, path, file }: { Bucket?: string, ACL?: ObjectCannedACL, path?: string, file: Express.Multer.File }): Promise<{ key: string }>
 async function uploadFileFunction({Bucket,ACL,path,file}: {Bucket?: string,ACL?: ObjectCannedACL,path?: string,file: Express.Multer.File | IPresignedUrlData}): Promise<{ key: string } | { url: string, key: string }>
+async function uploadFileFunction({Bucket,ACL,path,files}: {Bucket?: string,ACL?: ObjectCannedACL,path?: string,files: Express.Multer.File[] | IPresignedUrlData[]}): Promise<{ key: string }[] | { url: string, key: string }[]>
 async function uploadFileFunction({Bucket,ACL,path,files}: {Bucket?: string,ACL?: ObjectCannedACL,path?: string,files: Express.Multer.File[]}): Promise<{ key: string }[]>
 async function uploadFileFunction({Bucket,path,file,}: {Bucket?: string,path?: string,file: IPresignedUrlData}): Promise<{ url: string, key: string }>
 async function uploadFileFunction({Bucket,path,files}: { Bucket?: string,path?: string,files: IPresignedUrlData[]}): Promise<{ url: string, key: string }[]>
@@ -148,7 +149,7 @@ async function uploadFileFunction({
         }
         return await uploadSmallFile({ Bucket, ACL, path, file });
     }
-    if (process.env.UPLOAD_TYPE === "PRE_SIGNED" && isIPresignedUrlFile(file) && file.contentType && file.originalName)
+    if (process.env.UPLOAD_TYPE === "PRE_SIGNED" && isIPresignedUrlFile(file))
         return await createPreSignedUrl({ Bucket, path, contentType: file.contentType, originalName: file.originalName })
     throw new BadRequestError({ message: "File upload failed missing required data" })
 }

@@ -90,9 +90,8 @@ class UserService {
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "otp sent to your email" });
     };
     uploadProfileImage = async (req, res, next) => {
-        const file = req.body;
         const data = await (0, s3_config_1.uploadFile)({
-            file: req.file || file,
+            file: req.file,
             path: `users/${req.user?._id}/profileImage`
         });
         if (req.user?.profileImage && !await (0, s3_config_1.deleteFiles)({ key: req.user?.profileImage }))
@@ -110,9 +109,8 @@ class UserService {
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
     uploadCoverImages = async (req, res, next) => {
-        const files = req.body;
         const data = await (0, s3_config_1.uploadFile)({
-            files: req.files || files,
+            files: req.files,
             path: `users/${req.user?._id}/coverImages`
         });
         const keys = [...data.map(({ key }) => key)];

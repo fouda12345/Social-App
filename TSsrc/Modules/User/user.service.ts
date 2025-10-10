@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
-import { IgetProfileDTO, IchangePasswordDTO, IresetPasswordDTO, IforgetPasswordDTO, IprofileImageDTO, IcoverImagesDTO, IdeleteAssetDTO } from "./user.dto";
+import { IgetProfileDTO, IchangePasswordDTO, IresetPasswordDTO, IforgetPasswordDTO, IdeleteAssetDTO } from "./user.dto";
 import { changePasswordFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
@@ -11,7 +11,7 @@ import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from "../
 import { compareHash, } from "../../Utils/Security/hash.utils";
 import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
-import { deleteFiles, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
+import { deleteFiles, IPresignedUrlData, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
 
 
@@ -20,7 +20,7 @@ class UserService {
     private _userModel = new UserReposetory();
     private _tokenModel = new TokenReposetory();
     constructor() { }
-    public getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+    getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
         const Tuser: HUserDocument | undefined = 
             id == req.user?._id || !id ? 
@@ -97,9 +97,8 @@ class UserService {
         return successHandler({ res, statusCode: 200, message: "otp sent to your email" });
     }
     uploadProfileImage = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const file: IprofileImageDTO = req.body;
         const data: { key: string } | { url: string, key: string } = await uploadFile({
-            file: req.file as Express.Multer.File || file,
+            file: req.file as Express.Multer.File | IPresignedUrlData,
             path: `users/${req.user?._id}/profileImage`
         })
         if (req.user?.profileImage && !await deleteFiles({ key: req.user?.profileImage }))
@@ -120,9 +119,8 @@ class UserService {
         return successHandler({ res, statusCode: 200, message: "Success", data });
     }
     uploadCoverImages = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const files: IcoverImagesDTO = req.body;
         const data: { key: string }[] | { url: string, key: string }[] = await uploadFile({
-            files: req.files as Express.Multer.File[] || files,
+            files: req.files as Express.Multer.File[] | IPresignedUrlData[],
             path: `users/${req.user?._id}/coverImages`
         })
         const keys : string[] = [...data.map(({ key }) => key)]

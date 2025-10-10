@@ -92,7 +92,7 @@ async function uploadFileFunction({ Bucket = process.env.S3_BUCKET_NAME, ACL = "
         }
         return await (0, exports.uploadSmallFile)({ Bucket, ACL, path, file });
     }
-    if (process.env.UPLOAD_TYPE === "PRE_SIGNED" && (0, exports.isIPresignedUrlFile)(file) && file.contentType && file.originalName)
+    if (process.env.UPLOAD_TYPE === "PRE_SIGNED" && (0, exports.isIPresignedUrlFile)(file))
         return await (0, exports.createPreSignedUrl)({ Bucket, path, contentType: file.contentType, originalName: file.originalName });
     throw new error_handler_1.BadRequestError({ message: "File upload failed missing required data" });
 }
