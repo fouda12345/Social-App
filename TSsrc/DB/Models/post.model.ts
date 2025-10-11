@@ -34,9 +34,10 @@ export interface IPost {
 
     createdAt?: Date;
     updatedAt?: Date;
+    latestActivity?: Date;
 }
 
-export const postShema = new Schema<IPost>({
+export const postSchema = new Schema<IPost>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -103,7 +104,12 @@ export const postShema = new Schema<IPost>({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    restoredAt: Date
+    restoredAt: Date,
+
+    latestActivity: {
+        type: Date,
+        default: Date.now
+    }
 }, 
 {
     timestamps: true,
@@ -115,7 +121,24 @@ export const postShema = new Schema<IPost>({
     }
 });
 
+postSchema.virtual("popularity").get(function(this: IPost) {
+    return (this.likes?.length || 0) + (this.comments?.length || 0) + (this.shares?.length || 0);
+})
 
+postSchema.pre(["find" , "findOne" , "findOneAndUpdate" , "updateOne" , "updateMany" , "countDocuments"], function (next) {
+    const query = this.getQuery();
+    if (query.paranoid !== false) {
+        this.setQuery({ ...query, freezedAt: { $exists: false } });
+    }
+    next();
+})
 
-export const postModel = models.Post || model<IPost>('Post', postShema);
+postSchema.pre("save", function (next) {
+    if (this.isModified('likes') || this.isModified('comments') || this.isModified('shares')) {
+        this.latestActivity = new Date();
+    }
+    next();
+})
+
+export const postModel = models.Post || model<IPost>('Post', postSchema);
 export type HPostDocument = HydratedDocument<IPost>;

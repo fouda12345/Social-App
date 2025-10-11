@@ -16,8 +16,7 @@ export class UserReposetory extends DBReposetory<IUser> {
         data: Partial<IUser>,
         options?: CreateOptions | undefined
     }) : Promise<HUserDocument> {
-        let users: Partial<IUser>[] = [data];
-        const [user] : HUserDocument[] | undefined | [] = await this.create({ data:users,options}) || [];
+        const [user] = await this.create({ data:[data],options}) || [];
         if (!user) throw new AppError({message:"Error creating user"}); 
         return user
     }

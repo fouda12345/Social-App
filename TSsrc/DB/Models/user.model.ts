@@ -33,12 +33,17 @@ export interface IUser {
     profileImage?: string;
     coverImages?: string[];
     assets?:[string];
+    friends?: Types.ObjectId[];
+    freezedAt?: Date;
+    freezedBy?: Types.ObjectId;
+    retoredAt?: Date;
+    retoredBy?: Types.ObjectId;
     credentailsUpdatedAt?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }
 
-export const userShema = new Schema<IUser>({
+export const userSchema = new Schema<IUser>({
     firstName: {
         type: String,
         required: true,
@@ -96,6 +101,11 @@ export const userShema = new Schema<IUser>({
     profileImage: String,
     coverImages: [String],
     assets:[String],
+    friends:[{type:Schema.Types.ObjectId,ref:"User"}],
+    freezedAt: Date,
+    freezedBy: {type:Schema.Types.ObjectId,ref:"User"},
+    retoredAt: Date,
+    retoredBy: {type:Schema.Types.ObjectId,ref:"User"},
     credentailsUpdatedAt: Date
 },
 {
@@ -108,7 +118,7 @@ export const userShema = new Schema<IUser>({
     }
 });
 
-userShema.pre('save', async function (next) {
+userSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         this.password = await generateHash({data:this.password})
         this.oldPasswords.push(this.password);
@@ -118,7 +128,15 @@ userShema.pre('save', async function (next) {
     next();
 });
 
-userShema.virtual('fullName').set(function (fullName:string) { 
+userSchema.pre(["find" , "findOne" , "findOneAndUpdate","updateOne"], function (next) {
+    const query = this.getQuery();
+    if (query.paranoid !== false) {
+        this.setQuery({ ...query, freezedAt: { $exists: false } });
+    }
+    next();
+})
+
+userSchema.virtual('fullName').set(function (fullName:string) { 
     const names = fullName.split(' ');
     const [firstName, middleName, lastName] = names.length === 3 ? names :
     [names[0], undefined, names[1]]
@@ -131,5 +149,5 @@ userShema.virtual('fullName').set(function (fullName:string) {
     return `${this.firstName + " "}${this.middleName? this.middleName + " " : ""}${this.lastName}`;
 });
 
-export const userModel = models.User || model<IUser>('User', userShema);
+export const userModel = models.User || model<IUser>('User', userSchema);
 export type HUserDocument = HydratedDocument<IUser>;
