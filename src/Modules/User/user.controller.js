@@ -27,5 +27,8 @@ router.patch("/covere-images", (0, auth_middleware_1.auth)(), (0, cloud_multer_1
     maxSize: 5,
     storageApproach: cloud_multer_1.StorageApproach.DISK
 }).array("coverImage", 5), (0, validation_middleware_1.validate)(user_validation_1.coverImagesSchema), user_service_1.default.uploadCoverImages);
+router.patch("/freeze-account/{:userId}", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.controlAccountSchema), user_service_1.default.freezeAccount);
+router.patch("/restore-account/{:userId}", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.controlAccountSchema), user_service_1.default.restoreAccount);
 router.delete("/delete-asset", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.deleteAssetSchema), user_service_1.default.deleteAssets);
+router.delete("/{:userId}", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.controlAccountSchema), user_service_1.default.deleteAccount);
 exports.default = router;

@@ -145,4 +145,12 @@ export class DBReposetory<DocType> {
     }) : Promise<DeleteResult> {
         return await this.model.deleteOne(filter);
     }
+
+    async deleteMany({
+        filter
+    } : {
+        filter:RootFilterQuery<DocType>
+    }) : Promise<DeleteResult> {
+        return await this.model.deleteMany(filter);
+    }
 }

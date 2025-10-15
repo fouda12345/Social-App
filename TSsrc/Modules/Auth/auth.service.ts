@@ -48,7 +48,7 @@ class AuthService {
     public confirmEmail: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { otp, email }: IConfirmEmailDTO = req.body;
 
-        const checkUser = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } } });
+        const checkUser = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: false }, emailOTP: { $exists: true } } }) as HUserDocument;
 
         switch (true) {
             case !Boolean(checkUser):
@@ -68,7 +68,7 @@ class AuthService {
     public sendConfirmEmail: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { email }: ISendConfirmEmailDTO = req.body;
 
-        const user = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: false } } });
+        const user = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: false } } }) as HUserDocument;
         if (!user) throw new NotFoundError({ message: "User not found Invalid Email" });
 
 
@@ -97,7 +97,7 @@ class AuthService {
 
         const { email, password }: ILoginDTO = req.body;
 
-        const user = await this._userModel.findOne({ filter: { email } });
+        const user = await this._userModel.findOne({ filter: { email } }) as HUserDocument;
         if (!user || !await compareHash({ data: password, hash: user.password })) throw new UnauthorizedError();
         if (!user.confirmedEmail) throw new BadRequestError({ message: "Please confirm your email" });
 

@@ -125,3 +125,9 @@ export const getPostsSchema = z.object({
         sortBy: z.enum(PostSortingEnum).optional().default(PostSortingEnum.LATEST_ACTIVITY),
     })
 })
+
+export const controlPostSchema = z.object({
+    params: z.strictObject({
+        postId : generalFields.id
+    })
+})  

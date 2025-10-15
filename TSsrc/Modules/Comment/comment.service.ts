@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
 import { PostReposetory } from "../../DB/reposetories/post.reposetory";
 import { CommentReposetory } from "../../DB/reposetories/comment.reposetory";
-import { BadRequestError, NotFoundError } from "../../Utils/Handlers/error.handler";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
 import { PrivacyEnum } from "../../DB/Models/post.model";
-import { HUserDocument } from "../../DB/Models/user.model";
+import { HUserDocument, RoleEnum } from "../../DB/Models/user.model";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { deleteFiles, IPresignedUrlData, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { Promise, Types } from "mongoose";
@@ -74,11 +74,12 @@ class CommentService {
                 await deleteFiles({ keys: post.attachments as string[], Quiet: true });
             throw new BadRequestError({ message: "error adding comment" })
         }
+        await this._userModel.updateOne({ filter: { _id: comment.userId }, update: { $addToSet: { assets: { $each: uploadData.map(({ key }) => key) } } }})
         return successHandler({ res, statusCode: 201, message: "Comment created successfully", data: { comment: req.body.commentId ? undefined : comment, reply: req.body.commentId ? comment : undefined, attachments: process.env.UPLOAD_TYPE === "PRE_SIGNED" ? uploadData : undefined } });
     }
 
     updateComment = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
-        const { postId , commentId } = req.params
+        const { postId, commentId } = req.params
         let uploadData: { key: string, url: string }[] | { key: string }[] = []
         if (req.files?.length) {
             uploadData = await uploadFile({
@@ -97,13 +98,13 @@ class CommentService {
 
         const [post, comment] = await Promise.all([
             this._commentModel.findOne({ filter: { _id: commentId, postId, userId: req.user?._id } }),
-            this._postModel.findOne({ filter: { _id: postId} })
+            this._postModel.findOne({ filter: { _id: postId } })
         ])
 
-        if (! post|| !comment|| (comment.commentId &&!await this._commentModel.findOne({ filter: { _id: comment.commentId, postId} }))) throw new NotFoundError({ message: "Comment not found" })
+        if (!post || !comment || (comment.commentId && !await this._commentModel.findOne({ filter: { _id: comment.commentId, postId } }))) throw new NotFoundError({ message: "Comment not found" })
 
         const commentUpdate = await this._commentModel.updateOne({
-            filter: { _id: commentId, userId: req.user?._id , postId },
+            filter: { _id: commentId, userId: req.user?._id, postId },
             update: [
                 {
                     $set: {
@@ -159,8 +160,42 @@ class CommentService {
                 await deleteFiles({ keys: uploadData.map(({ key }) => key), Quiet: true });
             throw new BadRequestError({ message: "Failed to update post" })
         }
-
+        await this._userModel.updateOne({ filter: { _id: updatedComment.userId }, update: { $addToSet: { assets: { $each: updatedComment.attachments } } , $pull: { assets: { $in: req.body.removeAttachments } } } })
         return successHandler({ res, statusCode: 200, message: "Post updated successfully", data: { post } });
+    }
+
+    freezeComment = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to delete this post" })
+        const { postId , commentId } = req.params
+        let comment = await this._commentModel.findOne({ filter: { _id: commentId, postId, freezedAt: { $exists: false } } })
+        if (!comment) throw new NotFoundError({ message: "comment not found" })
+        switch (true) {
+            case req.user._id == comment.userId:
+                break;
+            case req.user.role == RoleEnum.ADMIN:
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to delete this comment" })
+        }
+        comment = await this._commentModel.findOneAndUpdate({ filter: { _id: commentId, freezedAt: { $exists: false } }, update: { freezedAt: new Date(), freezedBy: req.user._id }, options: { new: true } })
+        return successHandler({ res, statusCode: 200, message: "Post deleted successfully", data: { comment } });
+    }
+
+    restoreComment = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to restore this post" })
+        const { postId,commentId } = req.params
+        let comment = await this._postModel.findOne({ filter: { _id: commentId, postId, freezedAt: { $exists: true } } })
+        if (!comment) throw new NotFoundError({ message: "comment not found" })
+        switch (true) {
+            case req.user._id == comment.freezedBy && req.user._id == comment.userId:
+                break;
+            case req.user.role == RoleEnum.ADMIN && comment.userId != comment.freezedBy:
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to restore this post" })
+        }
+        comment = await this._postModel.findOneAndUpdate({ filter: { _id: commentId }, update: { $unset: { freezedAt: 1, freezedBy: 1 }, restoredAt: new Date(), restoredBy: req.user._id }, options: { new: true } })
+        return successHandler({ res, statusCode: 200, message: "Post restored successfully", data: { comment } });
     }
 }
 

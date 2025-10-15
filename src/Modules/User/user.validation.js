@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.changePasswordFlag = void 0;
+exports.controlAccountSchema = exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.changePasswordFlag = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
 const cloud_multer_1 = require("../../Utils/upload/multer/cloud.multer");
@@ -119,5 +119,13 @@ exports.deleteAssetSchema = zod_1.default.object({
                 code: "custom",
                 message: "key or keys is required"
             });
+    })
+});
+exports.controlAccountSchema = zod_1.default.object({
+    body: zod_1.default.strictObject({
+        password: validation_middleware_1.generalFields.password,
+    }),
+    params: zod_1.default.strictObject({
+        userId: validation_middleware_1.generalFields.id.optional()
     })
 });

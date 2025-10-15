@@ -127,3 +127,12 @@ export const deleteAssetSchema = z.object({
             })
     })
 })
+
+export const controlAccountSchema = z.object({
+    body: z.strictObject({
+        password: generalFields.password,
+    }),
+    params: z.strictObject({
+        userId: generalFields.id.optional()
+    })
+})

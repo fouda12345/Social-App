@@ -35,10 +35,38 @@ export const createCommentSchema = z.object({
     }
 })
 
-export const createReplyschema = createCommentSchema.extend({
+export const createReplyschema = z.object({
+    body: z.strictObject({
+        content : z.string().min(2).max(200).optional(),
+        tags : z.array(generalFields.id).optional().refine((tags) => [...new Set(tags)].length === tags?.length , {message: "Duplicate tags are not allowed"}),
+        files : z.array(z.strictObject({
+            contentType : z.string(),
+            originalName : z.string()
+        })).max(3).optional()
+    }),
+    files : z.array(z.union([
+        generalFields.file([...fileFilter.image,...fileFilter.video] , 1024),
+        z.strictObject({
+            contentType : z.string(),
+            originalName : z.string()
+        })
+    ])).max(3).optional(),
     params: z.strictObject({
+        postId : generalFields.id,
         commentId : generalFields.id
     })
+}).superRefine((data, ctx) => {
+    if (process.env.UPLOAD_TYPE === "PRE_SIGNED") {
+        data.files = data.body.files
+    }
+    delete data.body.files
+    if(!data.body.content && (!data.files?.length)){
+        ctx.addIssue({
+            code: "custom",
+            path: ["body","content"],
+            message: "content or attachments is required"
+        })
+    }
 })
 
 export const updateComment = z.object({
@@ -71,4 +99,11 @@ export const updateComment = z.object({
         data.files = data.body?.files
     }
     delete data.body?.files
+})
+
+export const controlCommentSchema = z.object({
+    params: z.strictObject({
+        postId : generalFields.id,
+        commentId : generalFields.id
+    })
 })

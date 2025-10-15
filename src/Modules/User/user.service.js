@@ -5,6 +5,7 @@ const user_validation_1 = require("./user.validation");
 const token_reposetory_1 = require("../../DB/reposetories/token.reposetory");
 const user_reposetory_1 = require("../../DB/reposetories/user.reposetory");
 const jwt_utils_1 = require("../../Utils/Security/jwt.utils");
+const user_model_1 = require("../../DB/Models/user.model");
 const error_handler_1 = require("../../Utils/Handlers/error.handler");
 const hash_utils_1 = require("../../Utils/Security/hash.utils");
 const otp_utils_1 = require("../../Utils/Security/otp.utils");
@@ -16,20 +17,21 @@ class UserService {
     constructor() { }
     getProfile = async (req, res, next) => {
         const { id } = req.params || undefined;
-        const Tuser = id == req.user?._id || !id ?
-            req.user :
-            await this._userModel.findOne({
-                filter: {
-                    _id: id,
-                    confirmedEmail: {
-                        $exists: true
-                    }
-                },
-                select: "firstName middleName lastName email fullName role gender phone"
-            });
-        if (!Tuser)
-            throw new error_handler_1.NotFoundError({ message: "User not found" });
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
+        let user;
+        switch (true) {
+            case (id && id == req.user?._id):
+                user = req.user;
+                break;
+            case (!id && Boolean(req.user?._id)):
+                user = req.user;
+                break;
+            case (Boolean(id)):
+                user = await this._userModel.findOne({ filter: { _id: id, confirmedEmail: { $exists: true } } });
+                break;
+            default:
+                throw new error_handler_1.NotFoundError({ message: "User not found" });
+        }
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user } });
     };
     updateProfile = async (req, res, next) => {
         const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
@@ -102,7 +104,8 @@ class UserService {
             },
             update: {
                 profileImage: data.key,
-                assets: [...(req.user?.assets || []), data.key]
+                $addToSet: { assets: data.key },
+                $pull: { assets: req.user?.profileImage }
             }
         }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
@@ -119,8 +122,7 @@ class UserService {
                 _id: req.user?._id
             },
             update: {
-                coverImages: [...(req.user?.coverImages || []), ...keys],
-                assets: [...(req.user?.assets || []), ...keys]
+                $addToSet: { assets: keys, coverImages: keys },
             }
         }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
@@ -142,6 +144,71 @@ class UserService {
             data = await (0, s3_config_1.deleteFiles)({ keys, Quiet: true });
         }
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
+    };
+    freezeAccount = async (req, res, next) => {
+        if (!req.user)
+            throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to freeze this account" });
+        const { userId } = req.params;
+        const { password } = req.body;
+        if (!await (0, hash_utils_1.compareHash)({ data: password, hash: req.user.password }))
+            throw new error_handler_1.BadRequestError({ message: "Invalid password" });
+        let targetId;
+        switch (true) {
+            case (!userId):
+                targetId = req.user._id;
+                break;
+            case (userId && req.user.role == user_model_1.RoleEnum.ADMIN):
+                targetId = userId;
+                break;
+            default:
+                throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to freeze this account" });
+        }
+        const user = await this._userModel.findOneAndUpdate({ filter: { _id: targetId, freezedAt: { $exists: false } }, update: { freezedAt: new Date(), freezedBy: req.user._id } });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "account deleted successfully", data: { user } });
+    };
+    restoreAccount = async (req, res, next) => {
+        if (!req.user)
+            throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to restore this account" });
+        const { userId } = req.params;
+        const { password } = req.body;
+        if (!await (0, hash_utils_1.compareHash)({ data: password, hash: req.user.password }))
+            throw new error_handler_1.BadRequestError({ message: "Invalid password" });
+        let filter;
+        switch (true) {
+            case !userId:
+                filter = { freezedAt: { $exists: true }, freezedBy: req.user._id, _id: req.user._id };
+                break;
+            case (userId && req.user.role == user_model_1.RoleEnum.ADMIN):
+                filter = { freezedAt: { $exists: true }, freezedBy: { $ne: userId }, _id: userId };
+                break;
+            default:
+                throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to restore this account" });
+        }
+        const user = await this._userModel.findOneAndUpdate({ filter, update: { $unset: { freezedAt: 1, freezedBy: 1 }, restoredAt: new Date(), restoredBy: req.user._id }, options: { new: true } });
+        if (!user)
+            throw new error_handler_1.NotFoundError({ message: "User not found" });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Post restored successfully", data: { user } });
+    };
+    deleteAccount = async (req, res, next) => {
+        if (!req.user)
+            throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to delete this account" });
+        const { userId } = req.params;
+        const { password } = req.body;
+        if (!await (0, hash_utils_1.compareHash)({ data: password, hash: req.user.password }))
+            throw new error_handler_1.BadRequestError({ message: "Invalid password" });
+        let targetId;
+        switch (true) {
+            case (!userId):
+                targetId = req.user._id;
+                break;
+            case (userId && req.user.role == user_model_1.RoleEnum.ADMIN):
+                targetId = userId;
+                break;
+            default:
+                throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to delete this account" });
+        }
+        const user = await this._userModel.deleteUser({ userId: targetId });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "account deleted successfully", data: { deletedUser: user } });
     };
 }
 exports.default = new UserService();

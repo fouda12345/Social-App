@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/H
 import { successHandler } from "../../Utils/Handlers/success.handler";
 import { deleteFiles, IPresignedUrlData, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { HPostDocument, PrivacyEnum } from "../../DB/Models/post.model";
-import { HUserDocument } from "../../DB/Models/user.model";
+import { HUserDocument, RoleEnum } from "../../DB/Models/user.model";
 import { Types } from "mongoose";
 import { PostSortingEnum } from "./post.validation";
 
@@ -37,6 +37,7 @@ class PostService {
                 await deleteFiles({ keys: post.attachments as string[], Quiet: true });
             throw error;
         }
+        await this._userModel.updateOne({ filter: { _id: req.user?._id }, update: { $addToSet: { assets: { $each: post.attachments } } }})
         return successHandler({ res, statusCode: 201, message: "Post created successfully", data: { post, attachments: process.env.UPLOAD_TYPE === "PRE_SIGNED" ? uploadData : undefined } });
     }
 
@@ -123,6 +124,7 @@ class PostService {
             await deleteFiles({ keys: req.body.removeAttachments, Quiet: true });
         }
         const post = await this._postModel.findOne({ filter: { _id: postId } })
+        await this._userModel.updateOne({ filter: { _id: req.user?._id }, update: { $addToSet: { assets: { $each: post?.attachments } } , $pull: { assets: { $in: req.body.removeAttachments } } } })
         return successHandler({ res, statusCode: 200, message: "Post updated successfully", data: { post } });
     }
 
@@ -180,6 +182,40 @@ class PostService {
         const post = await this._postModel.findOne({ filter: { _id: postId , $or: this.PrivacyAccessFilter(req.user) } })
         if (!post) throw new NotFoundError({ message: "Post not found" })
         return successHandler({ res, statusCode: 200, message: "Post fetched successfully", data: { post } });
+    }
+
+    freezePost = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to freeze this post" })
+        const { postId } = req.params
+        let post = await this._postModel.findOne({ filter: { _id: postId  , freezedAt:{ $exists: false}} })
+        if (!post) throw new NotFoundError({ message: "Post not found" })
+        switch (true) {
+            case req.user._id == post.userId:
+                break;
+            case req.user.role == RoleEnum.ADMIN:
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to freeze this post" })
+        }
+        post = await this._postModel.findOneAndUpdate({ filter: { _id: postId ,freezedAt:{ $exists: false}}, update : {freezedAt: new Date() , freezedBy: req.user._id} , options:{new: true}})
+        return successHandler({ res, statusCode: 200, message: "Post deleted successfully", data: { post } });
+    }
+
+    restorePost = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to restore this post" })
+        const { postId } = req.params
+        let post = await this._postModel.findOne({ filter: { _id: postId , freezedAt:{ $exists: true}} })
+        if (!post) throw new NotFoundError({ message: "Post not found" })
+        switch (true) {
+            case req.user._id == post.freezedBy && req.user._id == post.userId:
+                break;
+            case req.user.role == RoleEnum.ADMIN && post.userId != post.freezedBy:
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to restore this post" })
+        }
+        post = await this._postModel.findOneAndUpdate({ filter: { _id: postId }, update : {$unset: {freezedAt: 1 , freezedBy: 1} , restoredAt: new Date() , restoredBy: req.user._id} , options:{new: true}})
+        return successHandler({ res, statusCode: 200, message: "Post restored successfully", data: { post } });
     }
 
     private PrivacyAccessFilter(user: HUserDocument) {

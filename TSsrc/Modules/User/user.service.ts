@@ -5,7 +5,7 @@ import { changePasswordFlag } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
-import { HUserDocument } from "../../DB/Models/user.model";
+import { HUserDocument, IUser, RoleEnum } from "../../DB/Models/user.model";
 import { JwtPayload } from "jsonwebtoken";
 import { AppError, BadRequestError, NotFoundError, UnauthorizedError } from "../../Utils/Handlers/error.handler";
 import { compareHash, } from "../../Utils/Security/hash.utils";
@@ -13,7 +13,7 @@ import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
 import { deleteFiles, IPresignedUrlData, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-
+import { RootFilterQuery } from "mongoose";
 
 
 class UserService {
@@ -22,21 +22,21 @@ class UserService {
     constructor() { }
     getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
-        const Tuser: HUserDocument | undefined = 
-            id == req.user?._id || !id ? 
-            req.user : 
-            await this._userModel.findOne({ 
-                filter: { 
-                    _id: id, 
-                    confirmedEmail: { 
-                        $exists: true 
-                    } 
-                }
-                ,select: "firstName middleName lastName email fullName role gender phone"
-            });
-        if (!Tuser)
-            throw new NotFoundError({ message: "User not found" });
-        return successHandler({ res, statusCode: 200, message: "Success", data: { user: Tuser } });
+        let user: HUserDocument | null | undefined | IUser
+        switch (true) {
+            case (id && id == req.user?._id as unknown as string):
+                user = req.user
+                break;
+            case (!id && Boolean(req.user?._id)):
+                user = req.user
+                break;
+            case (Boolean(id)):
+                user = await this._userModel.findOne({ filter: { _id: id, confirmedEmail: { $exists: true } } });
+                break;
+            default:
+                throw new NotFoundError({ message: "User not found" });
+        }
+        return successHandler({ res, statusCode: 200, message: "Success", data: { user } });
     }
     updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
@@ -64,7 +64,7 @@ class UserService {
     }
     forgetPassword = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { email }: IforgetPasswordDTO = req.body;
-        const user: HUserDocument = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: true } }, select: "email passwordOTP", lean: true });
+        const user = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: true } }, select: "email passwordOTP", lean: true }) as HUserDocument;
         if (!user)
             throw new BadRequestError({ message: "Invalid Email" });
         if (user.passwordOTP?.createdAt < new Date(Date.now() - (1 * 60 * 1000)))
@@ -84,7 +84,7 @@ class UserService {
     }
     resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { email, newPassword, otp }: IresetPasswordDTO = req.body;
-        const user: HUserDocument = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: true }, passwordOTP: { $exists: true } }, select: "email passwordOTP oldPasswords", lean: true });
+        const user = await this._userModel.findOne({ filter: { email, confirmedEmail: { $exists: true }, passwordOTP: { $exists: true } }, select: "email passwordOTP oldPasswords", lean: true });
         if (!user)
             throw new BadRequestError({ message: "Invalid Email" });
         if (!await compareHash({ data: otp, hash: user.passwordOTP.otp }))
@@ -111,7 +111,8 @@ class UserService {
                 },
                 update: {
                     profileImage: data.key,
-                    assets: [...(req.user?.assets || []), data.key]
+                    $addToSet: { assets: data.key },
+                    $pull: { assets: req.user?.profileImage }
                 }
             })
         )
@@ -123,17 +124,16 @@ class UserService {
             files: req.files as Express.Multer.File[] | IPresignedUrlData[],
             path: `users/${req.user?._id}/coverImages`
         })
-        const keys : string[] = [...data.map(({ key }) => key)]
+        const keys: string[] = [...data.map(({ key }) => key)]
         if (
             !await this._userModel.findOneAndUpdate({
                 filter: {
                     _id: req.user?._id
                 },
                 update: {
-                    coverImages: [...(req.user?.coverImages || []), ...keys],
-                    assets: [...(req.user?.assets || []), ...keys]
+                    $addToSet: { assets: keys , coverImages: keys},
                 }
-            }) 
+            })
         )
             throw new AppError({ message: "Something went wrong" });
         return successHandler({ res, statusCode: 200, message: "Success", data });
@@ -154,6 +154,69 @@ class UserService {
             data = await deleteFiles({ keys, Quiet: true });
         }
         return successHandler({ res, statusCode: 200, message: "Success", data });
+    }
+    freezeAccount = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to freeze this account" })
+        const { userId } = req.params
+        const { password } = req.body
+        if (!await compareHash({ data: password, hash: req.user.password as string }))
+            throw new BadRequestError({ message: "Invalid password" })
+        let targetId
+        switch (true) {
+            case (!userId):
+                targetId = req.user._id
+                break;
+            case (userId && req.user.role == RoleEnum.ADMIN):
+                targetId = userId
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to freeze this account" })
+        }
+        const user = await this._userModel.findOneAndUpdate({ filter:{_id:targetId , freezedAt:{$exists:false}},update:{freezedAt:new Date(),freezedBy:req.user._id}})
+        return successHandler({ res, statusCode: 200, message: "account deleted successfully", data: { user } });
+    }
+
+    restoreAccount = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to restore this account" })
+        const { userId } = req.params
+        const { password } = req.body
+        if (!await compareHash({ data: password, hash: req.user.password as string }))
+            throw new BadRequestError({ message: "Invalid password" })
+        let filter : RootFilterQuery<IUser>
+        switch (true) {
+            case !userId:
+                filter = { freezedAt: { $exists: true }, freezedBy: req.user._id , _id : req.user._id}
+                break;
+            case (userId && req.user.role == RoleEnum.ADMIN):
+                filter = { freezedAt: { $exists: true }, freezedBy: {$ne : userId} , _id : userId}
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to restore this account" })
+        }
+        const user = await this._userModel.findOneAndUpdate({ filter, update: { $unset: { freezedAt: 1, freezedBy: 1 }, restoredAt: new Date(), restoredBy: req.user._id }, options: { new: true } })
+        if (!user) throw new NotFoundError({ message: "User not found" })
+        return successHandler({ res, statusCode: 200, message: "Post restored successfully", data: { user } });
+    }
+
+    deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to delete this account" })
+        const { userId } = req.params
+        const { password } = req.body
+        if (!await compareHash({ data: password, hash: req.user.password as string }))
+            throw new BadRequestError({ message: "Invalid password" })
+        let targetId
+        switch (true) {
+            case (!userId):
+                targetId = req.user._id
+                break;
+            case (userId && req.user.role == RoleEnum.ADMIN):
+                targetId = userId
+                break;
+            default:
+                throw new UnauthorizedError({ message: "You are not authorized to delete this account" })
+        }
+        const user = await this._userModel.deleteUser({ userId: targetId as string })
+        return successHandler({ res, statusCode: 200, message: "account deleted successfully", data: { deletedUser: user } });
     }
 }
 

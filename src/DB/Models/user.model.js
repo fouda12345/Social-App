@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userModel = exports.userShema = exports.GenderEnum = exports.RoleEnum = void 0;
+exports.userModel = exports.userSchema = exports.GenderEnum = exports.RoleEnum = void 0;
 const mongoose_1 = require("mongoose");
 const hash_utils_1 = require("../../Utils/Security/hash.utils");
 var RoleEnum;
@@ -13,7 +13,7 @@ var GenderEnum;
     GenderEnum["MALE"] = "MALE";
     GenderEnum["FEMALE"] = "FEMALE";
 })(GenderEnum || (exports.GenderEnum = GenderEnum = {}));
-exports.userShema = new mongoose_1.Schema({
+exports.userSchema = new mongoose_1.Schema({
     firstName: {
         type: String,
         required: true,
@@ -71,6 +71,11 @@ exports.userShema = new mongoose_1.Schema({
     profileImage: String,
     coverImages: [String],
     assets: [String],
+    friends: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
+    freezedAt: Date,
+    freezedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+    retoredAt: Date,
+    retoredBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     credentailsUpdatedAt: Date
 }, {
     timestamps: true,
@@ -81,7 +86,7 @@ exports.userShema = new mongoose_1.Schema({
         virtuals: true
     }
 });
-exports.userShema.pre('save', async function (next) {
+exports.userSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         this.password = await (0, hash_utils_1.generateHash)({ data: this.password });
         this.oldPasswords.push(this.password);
@@ -92,7 +97,14 @@ exports.userShema.pre('save', async function (next) {
         this.passwordOTP.otp = await (0, hash_utils_1.generateHash)({ data: this.passwordOTP.otp });
     next();
 });
-exports.userShema.virtual('fullName').set(function (fullName) {
+exports.userSchema.pre(["find", "findOne", "findOneAndUpdate", "updateOne"], function (next) {
+    const query = this.getQuery();
+    if (query.paranoid !== false) {
+        this.setQuery({ ...query, freezedAt: { $exists: false } });
+    }
+    next();
+});
+exports.userSchema.virtual('fullName').set(function (fullName) {
     const names = fullName.split(' ');
     const [firstName, middleName, lastName] = names.length === 3 ? names :
         [names[0], undefined, names[1]];
@@ -104,4 +116,4 @@ exports.userShema.virtual('fullName').set(function (fullName) {
 }).get(function () {
     return `${this.firstName + " "}${this.middleName ? this.middleName + " " : ""}${this.lastName}`;
 });
-exports.userModel = mongoose_1.models.User || (0, mongoose_1.model)('User', exports.userShema);
+exports.userModel = mongoose_1.models.User || (0, mongoose_1.model)('User', exports.userSchema);

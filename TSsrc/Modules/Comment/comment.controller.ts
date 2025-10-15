@@ -3,7 +3,7 @@ import commentServices from "./comment.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
 import { cloudFileUpload, fileFilter } from "../../Utils/upload/multer/cloud.multer";
-import { createCommentSchema, createReplyschema } from "./comment.validation";
+import { controlCommentSchema, createCommentSchema, createReplyschema } from "./comment.validation";
 const router = Router();
 
 router.post(
@@ -27,6 +27,20 @@ router.patch(
     auth(),
     validate(createReplyschema),
     commentServices.updateComment
+)
+
+router.patch(
+    "/freeze-comment/:commentId",
+    auth(),
+    validate(controlCommentSchema),
+    commentServices.freezeComment
+)
+
+router.patch(
+    "/restore-comment/:commentId",
+    auth(),
+    validate(controlCommentSchema),
+    commentServices.restoreComment
 )
 
 export default router

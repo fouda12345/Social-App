@@ -3,7 +3,7 @@ import postServices from "./post.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
 import { cloudFileUpload, fileFilter } from "../../Utils/upload/multer/cloud.multer";
-import { createPostSchema, getSinglePostSchema, getPostsSchema, likePostSchema, sharePostSchema, updatePostSchema } from "./post.validation";
+import { createPostSchema, getSinglePostSchema, getPostsSchema, likePostSchema, sharePostSchema, updatePostSchema, controlPostSchema } from "./post.validation";
 import commentRouter from "../Comment/comment.controller";
 const router = Router();
 
@@ -53,6 +53,20 @@ router.get(
     auth(),
     validate(getSinglePostSchema),
     postServices.getSinglePost
+)
+
+router.patch(
+    "/freeze-post/:postId",
+    auth(),
+    validate(controlPostSchema),
+    postServices.freezePost
+)
+
+router.patch(
+    "/restore-post/:postId",
+    auth(),
+    validate(controlPostSchema),
+    postServices.restorePost
 )
 
 

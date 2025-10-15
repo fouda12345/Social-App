@@ -1,6 +1,4 @@
 import { HydratedDocument, model , models, Schema, Types } from "mongoose";
-import { string } from "zod";
-
 
 export interface IComment {
     _id: Types.ObjectId;
@@ -48,7 +46,7 @@ export const commentSchema = new Schema<IComment>({
             return !this.attachments?.length;
         },
     },
-    attachments: [string],
+    attachments: [String],
     tags: [{
         type: Schema.Types.ObjectId,
         ref: 'User'
