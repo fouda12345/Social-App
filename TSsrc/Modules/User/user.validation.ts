@@ -10,6 +10,11 @@ export enum changePasswordFlag {
     KEEP_ALL = "KEEP_ALL"
 }
 
+export enum FriednRequestResponse {
+    ACCEPT = "ACCEPT",
+    REJECT = "REJECT"
+}
+
 export const getProfileSchema = z.object({
     params: z.strictObject({
         id: generalFields.id.optional()
@@ -134,5 +139,20 @@ export const controlAccountSchema = z.object({
     }),
     params: z.strictObject({
         userId: generalFields.id.optional()
+    })
+})
+
+export const manageFriendSchema = z.object({
+    params: z.strictObject({
+        userId: generalFields.id
+    })
+})
+
+export const respondToFriendRequestSchema = z.object({
+    params: z.strictObject({
+        friendRequestId: generalFields.id
+    }),
+    query: z.strictObject({
+        response: z.enum(FriednRequestResponse)
     })
 })

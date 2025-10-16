@@ -2,7 +2,7 @@ import { Router } from "express";
 import userServices from "./user.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
-import { changePasswordSchema, controlAccountSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, profileImageSchema, resetPasswordSchema, updateProfileSchema } from "./user.validation";
+import { changePasswordSchema, controlAccountSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, manageFriendSchema, profileImageSchema, resetPasswordSchema, respondToFriendRequestSchema, updateProfileSchema } from "./user.validation";
 import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
 const router = Router();
 
@@ -90,6 +90,26 @@ router.delete(
     auth(),
     validate(controlAccountSchema),
     userServices.deleteAccount
+)
+
+router.post(
+    "/:userId/manage-friend",
+    auth(),
+    validate(manageFriendSchema),
+    userServices.manageFriend
+)
+
+router.post(
+    "/:friendRequestId/respond-to-friend-request",
+    auth(),
+    validate(respondToFriendRequestSchema),
+    userServices.respondToFriendRequest
+)
+
+router.get(
+    "/friend-requests",
+    auth(),
+    userServices.getFriendRequests
 )
 
 

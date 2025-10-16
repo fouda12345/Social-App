@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { successHandler } from "../../Utils/Handlers/success.handler";
 import { IgetProfileDTO, IchangePasswordDTO, IresetPasswordDTO, IforgetPasswordDTO, IdeleteAssetDTO } from "./user.dto";
-import { changePasswordFlag } from "./user.validation";
+import { changePasswordFlag, FriednRequestResponse } from "./user.validation";
 import { TokenReposetory } from "../../DB/reposetories/token.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
 import { createCredentials, Credentials } from "../../Utils/Security/jwt.utils";
@@ -13,12 +13,15 @@ import { generateOtp } from "../../Utils/Security/otp.utils";
 import { emailEvent } from "../../Utils/Events/email.event";
 import { deleteFiles, IPresignedUrlData, uploadFile } from "../../Utils/upload/S3 Bucket/s3.config";
 import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/client-s3";
-import { RootFilterQuery } from "mongoose";
+import { RootFilterQuery, Types } from "mongoose";
+import { FriendRequestReposetory } from "../../DB/reposetories/friendRequest.reposetory";
+import { IFriendRequest } from "../../DB/Models/friendRequest.model";
 
 
 class UserService {
     private _userModel = new UserReposetory();
     private _tokenModel = new TokenReposetory();
+    private _friendRequestModel = new FriendRequestReposetory();
     constructor() { }
     getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
@@ -217,6 +220,67 @@ class UserService {
         }
         const user = await this._userModel.deleteUser({ userId: targetId as string })
         return successHandler({ res, statusCode: 200, message: "account deleted successfully", data: { deletedUser: user } });
+    }
+
+    manageFriend = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        if (!req.user) throw new UnauthorizedError({ message: "You are not authorized to delete this account" })
+        const { userId }  = req.params as unknown as  { userId: Types.ObjectId }
+        const friendRequest = await this._friendRequestModel.findOne({ filter: { createdBy: {$or : [req.user._id, userId]}, sendTo: {$or : [req.user._id, userId]} } })
+        let message = "Success";
+        let data : any= {}
+        switch (true){
+            case !friendRequest:
+                const sentRequest = await this._friendRequestModel.create({ data: [{createdBy: req.user._id,sendTo: userId}] })
+                message = "Friend request sent successfully"
+                data = { sentRequest }
+                break;
+            case Boolean(friendRequest?.acceptedAt):
+                await Promise.all([
+                    this._userModel.updateOne({ filter: { _id: req.user._id }, update: { $pull: { friends: userId } } }),
+                    this._userModel.updateOne({ filter: { _id: userId }, update: { $pull: { friends: req.user._id } } }),
+                    this._friendRequestModel.deleteOne({ filter: { _id: friendRequest._id } })
+                ])
+                message = "Friend removed successfully"
+                data = undefined
+                break;
+            case friendRequest && !friendRequest?.acceptedAt:
+                await this._friendRequestModel.deleteOne({ filter: { _id: friendRequest._id } })
+                message = "Friend request deleted successfully"
+                data = undefined
+                break;
+            default:
+                throw new BadRequestError({ message: "Something went wrong" })
+        }
+        return successHandler({ res, statusCode: 200, message, data });
+    }
+
+    getFriendRequests = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        const friendRequests = await this._friendRequestModel.find({ filter: { sendTo: req.user?._id , acceptedAt : {$exists : false}} })
+        const sentFriendRequests = await this._friendRequestModel.find({ filter: { createdBy: req.user?._id , acceptedAt : {$exists : false}} })
+        return successHandler({ res, statusCode: 200, message: "account deleted successfully", data: { friendRequests , sentFriendRequests} });
+    }
+
+    respondToFriendRequest = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
+        const { friendRequestId } = req.params as unknown as { friendRequestId: Types.ObjectId }
+        const { response } = req.query as { response: FriednRequestResponse }
+        const filter : RootFilterQuery<IFriendRequest> = { _id: friendRequestId , sendTo: req.user?._id , acceptedAt : {$exists : false} }
+        let message : string = "Success"
+        let data : any = undefined
+        switch (response){
+            case FriednRequestResponse.ACCEPT:
+                const friendRequest = await this._friendRequestModel.findOneAndUpdate({ filter , update : { $set : { acceptedAt : new Date() }} , options : { new : true } })
+                if (!friendRequest) throw new NotFoundError({ message: "Friend request not found" })
+                data = { friendRequest }
+                message = "Friend request accepted successfully"
+                break;
+            case FriednRequestResponse.REJECT:
+                if (!await this._friendRequestModel.findOneAndDelete({ filter})) throw new NotFoundError({ message: "Friend request not found" })
+                message = "Friend request rejected successfully"
+                break;
+            default:
+                throw new BadRequestError({ message: "Invalid response" })
+        }
+        return successHandler({ res, statusCode: 200, message, data });
     }
 }
 
