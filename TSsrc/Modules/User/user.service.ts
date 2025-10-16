@@ -270,6 +270,10 @@ class UserService {
             case FriednRequestResponse.ACCEPT:
                 const friendRequest = await this._friendRequestModel.findOneAndUpdate({ filter , update : { $set : { acceptedAt : new Date() }} , options : { new : true } })
                 if (!friendRequest) throw new NotFoundError({ message: "Friend request not found" })
+                await Promise.all([
+                    this._userModel.updateOne({ filter: { _id: req.user?._id }, update: { $addToSet: { friends: friendRequest.createdBy } } }),
+                    this._userModel.updateOne({ filter: { _id: friendRequest.createdBy }, update: { $addToSet: { friends: req.user?._id } } })
+                ])
                 data = { friendRequest }
                 message = "Friend request accepted successfully"
                 break;
