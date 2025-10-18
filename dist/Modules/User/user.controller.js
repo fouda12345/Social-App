@@ -31,4 +31,7 @@ router.patch("/freeze-account/{:userId}", (0, auth_middleware_1.auth)(), (0, val
 router.patch("/restore-account/{:userId}", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.controlAccountSchema), user_service_1.default.restoreAccount);
 router.delete("/delete-asset", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.deleteAssetSchema), user_service_1.default.deleteAssets);
 router.delete("/{:userId}", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.controlAccountSchema), user_service_1.default.deleteAccount);
+router.post("/:userId/manage-friend", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.manageFriendSchema), user_service_1.default.manageFriend);
+router.post("/:friendRequestId/respond-to-friend-request", (0, auth_middleware_1.auth)(), (0, validation_middleware_1.validate)(user_validation_1.respondToFriendRequestSchema), user_service_1.default.respondToFriendRequest);
+router.get("/friend-requests", (0, auth_middleware_1.auth)(), user_service_1.default.getFriendRequests);
 exports.default = router;

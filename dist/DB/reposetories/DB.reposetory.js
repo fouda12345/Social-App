@@ -65,5 +65,8 @@ class DBReposetory {
     async deleteMany({ filter }) {
         return await this.model.deleteMany(filter);
     }
+    async findOneAndDelete({ filter }) {
+        return await this.model.findOneAndDelete(filter);
+    }
 }
 exports.DBReposetory = DBReposetory;

@@ -11,9 +11,11 @@ const hash_utils_1 = require("../../Utils/Security/hash.utils");
 const otp_utils_1 = require("../../Utils/Security/otp.utils");
 const email_event_1 = require("../../Utils/Events/email.event");
 const s3_config_1 = require("../../Utils/upload/S3 Bucket/s3.config");
+const friendRequest_reposetory_1 = require("../../DB/reposetories/friendRequest.reposetory");
 class UserService {
     _userModel = new user_reposetory_1.UserReposetory();
     _tokenModel = new token_reposetory_1.TokenReposetory();
+    _friendRequestModel = new friendRequest_reposetory_1.FriendRequestReposetory();
     constructor() { }
     getProfile = async (req, res, next) => {
         const { id } = req.params || undefined;
@@ -209,6 +211,71 @@ class UserService {
         }
         const user = await this._userModel.deleteUser({ userId: targetId });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "account deleted successfully", data: { deletedUser: user } });
+    };
+    manageFriend = async (req, res, next) => {
+        if (!req.user)
+            throw new error_handler_1.UnauthorizedError({ message: "You are not authorized to delete this account" });
+        const { userId } = req.params;
+        const friendRequest = await this._friendRequestModel.findOne({ filter: { createdBy: { $or: [req.user._id, userId] }, sendTo: { $or: [req.user._id, userId] } } });
+        let message = "Success";
+        let data = {};
+        switch (true) {
+            case !friendRequest:
+                const sentRequest = await this._friendRequestModel.create({ data: [{ createdBy: req.user._id, sendTo: userId }] });
+                message = "Friend request sent successfully";
+                data = { sentRequest };
+                break;
+            case Boolean(friendRequest?.acceptedAt):
+                await Promise.all([
+                    this._userModel.updateOne({ filter: { _id: req.user._id }, update: { $pull: { friends: userId } } }),
+                    this._userModel.updateOne({ filter: { _id: userId }, update: { $pull: { friends: req.user._id } } }),
+                    this._friendRequestModel.deleteOne({ filter: { _id: friendRequest._id } })
+                ]);
+                message = "Friend removed successfully";
+                data = undefined;
+                break;
+            case friendRequest && !friendRequest?.acceptedAt:
+                await this._friendRequestModel.deleteOne({ filter: { _id: friendRequest._id } });
+                message = "Friend request deleted successfully";
+                data = undefined;
+                break;
+            default:
+                throw new error_handler_1.BadRequestError({ message: "Something went wrong" });
+        }
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message, data });
+    };
+    getFriendRequests = async (req, res, next) => {
+        const friendRequests = await this._friendRequestModel.find({ filter: { sendTo: req.user?._id, acceptedAt: { $exists: false } } });
+        const sentFriendRequests = await this._friendRequestModel.find({ filter: { createdBy: req.user?._id, acceptedAt: { $exists: false } } });
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "account deleted successfully", data: { friendRequests, sentFriendRequests } });
+    };
+    respondToFriendRequest = async (req, res, next) => {
+        const { friendRequestId } = req.params;
+        const { response } = req.query;
+        const filter = { _id: friendRequestId, sendTo: req.user?._id, acceptedAt: { $exists: false } };
+        let message = "Success";
+        let data = undefined;
+        switch (response) {
+            case user_validation_1.FriednRequestResponse.ACCEPT:
+                const friendRequest = await this._friendRequestModel.findOneAndUpdate({ filter, update: { $set: { acceptedAt: new Date() } }, options: { new: true } });
+                if (!friendRequest)
+                    throw new error_handler_1.NotFoundError({ message: "Friend request not found" });
+                await Promise.all([
+                    this._userModel.updateOne({ filter: { _id: req.user?._id }, update: { $addToSet: { friends: friendRequest.createdBy } } }),
+                    this._userModel.updateOne({ filter: { _id: friendRequest.createdBy }, update: { $addToSet: { friends: req.user?._id } } })
+                ]);
+                data = { friendRequest };
+                message = "Friend request accepted successfully";
+                break;
+            case user_validation_1.FriednRequestResponse.REJECT:
+                if (!await this._friendRequestModel.findOneAndDelete({ filter }))
+                    throw new error_handler_1.NotFoundError({ message: "Friend request not found" });
+                message = "Friend request rejected successfully";
+                break;
+            default:
+                throw new error_handler_1.BadRequestError({ message: "Invalid response" });
+        }
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message, data });
     };
 }
 exports.default = new UserService();

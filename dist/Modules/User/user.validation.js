@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.controlAccountSchema = exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.changePasswordFlag = void 0;
+exports.respondToFriendRequestSchema = exports.manageFriendSchema = exports.controlAccountSchema = exports.deleteAssetSchema = exports.coverImagesSchema = exports.profileImageSchema = exports.resetPasswordSchema = exports.forgetPasswordSchema = exports.changePasswordSchema = exports.updateProfileSchema = exports.getProfileSchema = exports.FriednRequestResponse = exports.changePasswordFlag = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
 const cloud_multer_1 = require("../../Utils/upload/multer/cloud.multer");
@@ -13,6 +13,11 @@ var changePasswordFlag;
     changePasswordFlag["KEEP_ME"] = "KEEP_ME";
     changePasswordFlag["KEEP_ALL"] = "KEEP_ALL";
 })(changePasswordFlag || (exports.changePasswordFlag = changePasswordFlag = {}));
+var FriednRequestResponse;
+(function (FriednRequestResponse) {
+    FriednRequestResponse["ACCEPT"] = "ACCEPT";
+    FriednRequestResponse["REJECT"] = "REJECT";
+})(FriednRequestResponse || (exports.FriednRequestResponse = FriednRequestResponse = {}));
 exports.getProfileSchema = zod_1.default.object({
     params: zod_1.default.strictObject({
         id: validation_middleware_1.generalFields.id.optional()
@@ -127,5 +132,18 @@ exports.controlAccountSchema = zod_1.default.object({
     }),
     params: zod_1.default.strictObject({
         userId: validation_middleware_1.generalFields.id.optional()
+    })
+});
+exports.manageFriendSchema = zod_1.default.object({
+    params: zod_1.default.strictObject({
+        userId: validation_middleware_1.generalFields.id
+    })
+});
+exports.respondToFriendRequestSchema = zod_1.default.object({
+    params: zod_1.default.strictObject({
+        friendRequestId: validation_middleware_1.generalFields.id
+    }),
+    query: zod_1.default.strictObject({
+        response: zod_1.default.enum(FriednRequestResponse)
     })
 });
