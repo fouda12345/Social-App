@@ -21,6 +21,24 @@ var FriednRequestResponse;
 exports.getProfileSchema = zod_1.default.object({
     params: zod_1.default.strictObject({
         id: validation_middleware_1.generalFields.id.optional()
+    }),
+    query: zod_1.default.strictObject({
+        groups: zod_1.default.string().transform((groups, ctx) => {
+            if (groups === "true") {
+                return true;
+            }
+            else if (groups === "false") {
+                return false;
+            }
+            else {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["groups"],
+                    message: "groups must be true or false"
+                });
+                return zod_1.default.NEVER;
+            }
+        }).optional()
     })
 });
 exports.updateProfileSchema = zod_1.default.object({
@@ -56,11 +74,11 @@ exports.profileImageSchema = zod_1.default.object({
         file: zod_1.default.strictObject({
             contentType: zod_1.default.string(),
             originalName: zod_1.default.string()
-        }).optional()
+        }).optional(),
     }),
     file: zod_1.default.union([validation_middleware_1.generalFields.file(cloud_multer_1.fileFilter.image, 5), zod_1.default.strictObject({
-            contentType: zod_1.default.string().optional(),
-            originalName: zod_1.default.string().optional()
+            contentType: zod_1.default.string(),
+            originalName: zod_1.default.string()
         })]).optional()
 }).superRefine((data, ctx) => {
     if (process.env.UPLOAD_TYPE === "PRE_SIGNED") {

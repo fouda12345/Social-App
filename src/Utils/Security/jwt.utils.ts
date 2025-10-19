@@ -97,7 +97,7 @@ export const decodeToken = async ({
     if (await tokenModel.findOne({filter:{jti:decodedToken.jti}}))
         throw new UnauthorizedError({message:"Invalid or Expired Token"})
     const userModel = new UserReposetory()
-    const user = await userModel.findOne({filter:{_id:decodedToken._id} , lean:true}) as HUserDocument
+    const user = await userModel.findOne({filter:{_id:decodedToken._id}}) as HUserDocument
     if(!user) 
         throw new NotFoundError({message:"Account not registered"})
     if(Number(user.credentailsUpdatedAt?.getTime()) > decodedToken.iat * 1000)

@@ -15,6 +15,7 @@ import { connectDB } from './DB/connection';
 import { limiter } from './Utils/Middlewares/limitter.utils';
 import { corsOptions } from './Utils/Middlewares/cors.utils';
 import { getAssets } from './Utils/Handlers/get.assets';
+import { intializeGateway } from './Modules/Gateway/gateway.main';
 
 
 
@@ -32,9 +33,12 @@ export const bootstrap = async() : Promise<void> => {
     app.use("/api/v1/post" , postRouter);
 
     app.get("/uploads/*path" , getAssets)
+
     app.use(errorHandler)
 
-    app.listen(port, () => {
+    const httpServer = app.listen(port, () => {
         console.log(`Server is running on http://localhost:${port}`);
     })
+
+    intializeGateway(httpServer);
 }

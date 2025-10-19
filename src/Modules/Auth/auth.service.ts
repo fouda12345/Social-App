@@ -101,8 +101,8 @@ class AuthService {
         if (!user || !await compareHash({ data: password, hash: user.password })) throw new UnauthorizedError();
         if (!user.confirmedEmail) throw new BadRequestError({ message: "Please confirm your email" });
 
-        const Credentials: Credentials = await createCredentials(user);
-        return successHandler({ res, statusCode: 200, message: "Login successful", data: Credentials });
+        const credentials: Credentials = await createCredentials(user);
+        return successHandler({ res, statusCode: 200, message: "Done", data: {credentials} });
     }
 
     public logout = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {

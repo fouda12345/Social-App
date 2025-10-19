@@ -18,6 +18,7 @@ const connection_1 = require("./DB/connection");
 const limitter_utils_1 = require("./Utils/Middlewares/limitter.utils");
 const cors_utils_1 = require("./Utils/Middlewares/cors.utils");
 const get_assets_1 = require("./Utils/Handlers/get.assets");
+const gateway_main_1 = require("./Modules/Gateway/gateway.main");
 const bootstrap = async () => {
     await (0, connection_1.connectDB)();
     const app = (0, express_1.default)();
@@ -28,8 +29,9 @@ const bootstrap = async () => {
     app.use("/api/v1/post", post_controller_1.default);
     app.get("/uploads/*path", get_assets_1.getAssets);
     app.use(error_handler_1.errorHandler);
-    app.listen(port, () => {
+    const httpServer = app.listen(port, () => {
         console.log(`Server is running on http://localhost:${port}`);
     });
+    (0, gateway_main_1.intializeGateway)(httpServer);
 };
 exports.bootstrap = bootstrap;

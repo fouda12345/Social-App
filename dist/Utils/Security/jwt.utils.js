@@ -90,7 +90,7 @@ const decodeToken = async ({ authorization, tokenType = TokenType.ACCESS }) => {
     if (await tokenModel.findOne({ filter: { jti: decodedToken.jti } }))
         throw new error_handler_1.UnauthorizedError({ message: "Invalid or Expired Token" });
     const userModel = new user_reposetory_1.UserReposetory();
-    const user = await userModel.findOne({ filter: { _id: decodedToken._id }, lean: true });
+    const user = await userModel.findOne({ filter: { _id: decodedToken._id } });
     if (!user)
         throw new error_handler_1.NotFoundError({ message: "Account not registered" });
     if (Number(user.credentailsUpdatedAt?.getTime()) > decodedToken.iat * 1000)

@@ -3,8 +3,12 @@ import userServices from "./user.service";
 import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
 import { changePasswordSchema, controlAccountSchema, coverImagesSchema, deleteAssetSchema, forgetPasswordSchema, getProfileSchema, manageFriendSchema, profileImageSchema, resetPasswordSchema, respondToFriendRequestSchema, updateProfileSchema } from "./user.validation";
+import chatRouter from "../chat/chat.controller";
 import { cloudFileUpload, fileFilter, StorageApproach } from "../../Utils/upload/multer/cloud.multer";
 const router = Router();
+
+
+router.use("/chat",chatRouter)
 
 router.get(
     "/profile{/:id}",

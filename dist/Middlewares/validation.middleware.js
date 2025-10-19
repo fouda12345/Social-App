@@ -27,13 +27,15 @@ exports.generalFields = {
     id: zod_1.default.string().refine((val) => mongoose_1.Types.ObjectId.isValid(val), { message: "Invalid id" }),
     file: function (mimetype = cloud_multer_1.fileFilter.image, sizeInMB = 2) {
         return zod_1.default.strictObject({
-            originalname: zod_1.default.string(),
+            filename: zod_1.default.string().optional(),
             fieldname: zod_1.default.string(),
+            originalname: zod_1.default.string(),
             mimetype: zod_1.default.string().refine((type) => mimetype.includes(type), { message: `iNvaliud file type` }),
             size: zod_1.default.number().refine((s) => s <= sizeInMB * 1024 * 1024, { message: `File size should be less than ${sizeInMB}MB` }),
             buffer: zod_1.default.instanceof(Buffer).optional(),
             path: zod_1.default.string().optional(),
-            encoding: zod_1.default.string()
+            encoding: zod_1.default.string(),
+            destination: zod_1.default.string().optional()
         }).refine((file) => file.buffer || file.path, { message: "File is required" });
     },
 };

@@ -8,8 +8,10 @@ const user_service_1 = __importDefault(require("./user.service"));
 const auth_middleware_1 = require("../../Middlewares/auth.middleware");
 const validation_middleware_1 = require("../../Middlewares/validation.middleware");
 const user_validation_1 = require("./user.validation");
+const chat_controller_1 = __importDefault(require("../chat/chat.controller"));
 const cloud_multer_1 = require("../../Utils/upload/multer/cloud.multer");
 const router = (0, express_1.Router)();
+router.use("/chat", chat_controller_1.default);
 router.get("/profile{/:id}", (0, auth_middleware_1.auth)({
     required: false
 }), (0, validation_middleware_1.validate)(user_validation_1.getProfileSchema), user_service_1.default.getProfile);

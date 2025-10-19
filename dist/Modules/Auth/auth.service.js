@@ -74,8 +74,8 @@ class AuthService {
             throw new error_handler_1.UnauthorizedError();
         if (!user.confirmedEmail)
             throw new error_handler_1.BadRequestError({ message: "Please confirm your email" });
-        const Credentials = await (0, jwt_utils_1.createCredentials)(user);
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Login successful", data: Credentials });
+        const credentials = await (0, jwt_utils_1.createCredentials)(user);
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Done", data: { credentials } });
     };
     logout = async (req, res, next) => {
         const { flag } = req.body;

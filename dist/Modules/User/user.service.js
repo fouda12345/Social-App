@@ -12,10 +12,12 @@ const otp_utils_1 = require("../../Utils/Security/otp.utils");
 const email_event_1 = require("../../Utils/Events/email.event");
 const s3_config_1 = require("../../Utils/upload/S3 Bucket/s3.config");
 const friendRequest_reposetory_1 = require("../../DB/reposetories/friendRequest.reposetory");
+const chat_reposetory_1 = require("../../DB/reposetories/chat.reposetory");
 class UserService {
     _userModel = new user_reposetory_1.UserReposetory();
     _tokenModel = new token_reposetory_1.TokenReposetory();
     _friendRequestModel = new friendRequest_reposetory_1.FriendRequestReposetory();
+    _chatModel = new chat_reposetory_1.ChatReposetory();
     constructor() { }
     getProfile = async (req, res, next) => {
         const { id } = req.params || undefined;
@@ -33,7 +35,12 @@ class UserService {
             default:
                 throw new error_handler_1.NotFoundError({ message: "User not found" });
         }
-        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user } });
+        await user.populate({ path: "friends" });
+        let groups = [];
+        if (req.query?.groups && req.user?._id == user?._id) {
+            groups = await this._chatModel.find({ filter: { participants: { $in: req.user?._id }, group: { $exists: true } }, populate: { path: "messages.createdBy" } });
+        }
+        return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data: { user, groups } });
     };
     updateProfile = async (req, res, next) => {
         const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
@@ -100,14 +107,14 @@ class UserService {
         });
         if (req.user?.profileImage && !await (0, s3_config_1.deleteFiles)({ key: req.user?.profileImage }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
+        const assets = req.user?.assets?.filter((key) => key !== req.user?.profileImage);
         if (!await this._userModel.findOneAndUpdate({
             filter: {
                 _id: req.user?._id
             },
             update: {
                 profileImage: data.key,
-                $addToSet: { assets: data.key },
-                $pull: { assets: req.user?.profileImage }
+                assets
             }
         }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
@@ -124,7 +131,7 @@ class UserService {
                 _id: req.user?._id
             },
             update: {
-                $addToSet: { assets: keys, coverImages: keys },
+                $addToSet: { assets: { $each: keys }, coverImages: { $each: keys } },
             }
         }))
             throw new error_handler_1.AppError({ message: "Something went wrong" });
@@ -133,10 +140,12 @@ class UserService {
     deleteAssets = async (req, res, next) => {
         const { key, keys } = req.body;
         let data = {};
+        let removeAssets = [];
         if (key) {
             if (!req.user?.assets?.includes(key))
                 throw new error_handler_1.UnauthorizedError({ message: "you don't have permission" });
             data = await (0, s3_config_1.deleteFiles)({ key });
+            removeAssets.push(key);
         }
         if (keys && keys.length > 0) {
             keys.forEach(k => {
@@ -144,7 +153,16 @@ class UserService {
                     throw new error_handler_1.UnauthorizedError({ message: "you don't have permission" });
             });
             data = await (0, s3_config_1.deleteFiles)({ keys, Quiet: true });
+            removeAssets = [...removeAssets, ...keys];
         }
+        await this._userModel.findOneAndUpdate({
+            filter: {
+                _id: req.user?._id
+            },
+            update: {
+                $pull: { assets: { $in: removeAssets } }
+            }
+        });
         return (0, success_handler_1.successHandler)({ res, statusCode: 200, message: "Success", data });
     };
     freezeAccount = async (req, res, next) => {

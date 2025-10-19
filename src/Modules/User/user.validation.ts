@@ -18,6 +18,22 @@ export enum FriednRequestResponse {
 export const getProfileSchema = z.object({
     params: z.strictObject({
         id: generalFields.id.optional()
+    }),
+    query: z.strictObject({
+        groups: z.string().transform((groups,ctx) => {
+            if (groups === "true"){
+                return true
+            }else if (groups === "false"){
+                return false
+            } else {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["groups"],
+                    message: "groups must be true or false"
+                })
+                return z.NEVER
+            }
+        }).optional()
     })
 })
 
@@ -58,11 +74,11 @@ export const profileImageSchema = z.object({
         file: z.strictObject({
             contentType: z.string(),
             originalName: z.string()
-        }).optional()
+        }).optional(),
     }),
     file: z.union([generalFields.file(fileFilter.image, 5), z.strictObject({
-        contentType: z.string().optional(),
-        originalName: z.string().optional()
+        contentType: z.string(),
+        originalName: z.string()
     })]).optional()
 }).superRefine((data, ctx) => {
     if (process.env.UPLOAD_TYPE === "PRE_SIGNED") {

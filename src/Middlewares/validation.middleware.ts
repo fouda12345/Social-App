@@ -23,13 +23,15 @@ export const generalFields = {
     id: z.string().refine((val) => Types.ObjectId.isValid(val), { message: "Invalid id" }),
     file: function (mimetype : string[] = fileFilter.image , sizeInMB:number = 2) {
         return z.strictObject({
-            originalname: z.string(),
+            filename: z.string().optional(),
             fieldname: z.string(),
+            originalname: z.string(),
             mimetype: z.string().refine((type) => mimetype.includes(type), { message: `iNvaliud file type`}),
             size: z.number().refine((s) => s <= sizeInMB * 1024 * 1024, { message: `File size should be less than ${sizeInMB}MB` }),
             buffer: z.instanceof(Buffer).optional(),
             path: z.string().optional(),
-            encoding: z.string()
+            encoding: z.string(),
+            destination: z.string().optional()
         }).refine((file) => file.buffer || file.path, { message: "File is required" })
     }, 
 }

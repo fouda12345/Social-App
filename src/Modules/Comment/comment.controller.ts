@@ -4,7 +4,9 @@ import { auth } from "../../Middlewares/auth.middleware";
 import { validate } from "../../Middlewares/validation.middleware";
 import { cloudFileUpload, fileFilter } from "../../Utils/upload/multer/cloud.multer";
 import { controlCommentSchema, createCommentSchema, createReplyschema } from "./comment.validation";
-const router = Router();
+const router = Router({
+    mergeParams: true
+});
 
 router.post(
     "/",

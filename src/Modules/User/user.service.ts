@@ -16,12 +16,15 @@ import { DeleteObjectCommandOutput, DeleteObjectsCommandOutput } from "@aws-sdk/
 import { RootFilterQuery, Types } from "mongoose";
 import { FriendRequestReposetory } from "../../DB/reposetories/friendRequest.reposetory";
 import { IFriendRequest } from "../../DB/Models/friendRequest.model";
+import { ChatReposetory } from "../../DB/reposetories/chat.reposetory";
+import { HChatDocument, IChat } from "../../DB/Models/chat.model";
 
 
 class UserService {
     private _userModel = new UserReposetory();
     private _tokenModel = new TokenReposetory();
     private _friendRequestModel = new FriendRequestReposetory();
+    private _chatModel = new ChatReposetory();
     constructor() { }
     getProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { id }: IgetProfileDTO = req.params || undefined
@@ -39,7 +42,12 @@ class UserService {
             default:
                 throw new NotFoundError({ message: "User not found" });
         }
-        return successHandler({ res, statusCode: 200, message: "Success", data: { user } });
+        await (user as HUserDocument).populate({path: "friends"});
+        let groups : HChatDocument[] | [] | IChat[] = []
+        if (req.query?.groups && req.user?._id == user?._id){
+            groups = await this._chatModel.find({ filter: { participants: { $in: req.user?._id }, group: { $exists: true } } ,populate: { path: "messages.createdBy" }})
+        }
+        return successHandler({ res, statusCode: 200, message: "Success", data: { user , groups } });
     }
     updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const updtedUser = await this._userModel.findOneAndUpdate({ filter: { _id: req.user?._id }, update: req.body });
@@ -107,6 +115,8 @@ class UserService {
         if (req.user?.profileImage && !await deleteFiles({ key: req.user?.profileImage }))
             throw new AppError({ message: "Something went wrong" });
 
+        const assets = req.user?.assets?.filter(( key ) => key !== req.user?.profileImage)
+
         if (
             !await this._userModel.findOneAndUpdate({
                 filter: {
@@ -114,8 +124,7 @@ class UserService {
                 },
                 update: {
                     profileImage: data.key,
-                    $addToSet: { assets: data.key },
-                    $pull: { assets: req.user?.profileImage }
+                    assets
                 }
             })
         )
@@ -134,7 +143,7 @@ class UserService {
                     _id: req.user?._id
                 },
                 update: {
-                    $addToSet: { assets: keys , coverImages: keys},
+                    $addToSet: { assets: { $each: keys } , coverImages: { $each: keys } },
                 }
             })
         )
@@ -144,10 +153,12 @@ class UserService {
     deleteAssets = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
         const { key, keys }: IdeleteAssetDTO = req.body;
         let data: DeleteObjectCommandOutput | DeleteObjectsCommandOutput | {} = {}
+        let removeAssets: string[] = []
         if (key) {
             if (!req.user?.assets?.includes(key))
                 throw new UnauthorizedError({ message: "you don't have permission" });
             data = await deleteFiles({ key });
+            removeAssets.push(key)
         }
         if (keys && keys.length > 0) {
             keys.forEach(k => {
@@ -155,7 +166,16 @@ class UserService {
                     throw new UnauthorizedError({ message: "you don't have permission" });
             })
             data = await deleteFiles({ keys, Quiet: true });
+            removeAssets = [...removeAssets, ...keys]
         }
+        await this._userModel.findOneAndUpdate({
+            filter: {
+                _id: req.user?._id
+            },
+            update: {
+                $pull: { assets: { $in: removeAssets } }
+            }
+        })
         return successHandler({ res, statusCode: 200, message: "Success", data });
     }
     freezeAccount = async (req: Request, res: Response, next: NextFunction): Promise<Response> => {
