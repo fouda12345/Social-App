@@ -27,6 +27,10 @@ export interface ISendGrouopMessageDTO {
     
 }
 
+export interface IRequestOnlineUsersDTO {
+    socket : IAuthSocket
+}
+
 export type IGetChatDTO = z.infer<typeof getChatSchema>["params"]
 
 export type ICreateGroupChatDTO = z.infer<typeof createGroupSchema>["body"]

@@ -23,4 +23,10 @@ export class ChatEvents {
             this._chatService.sendGroupMessage({socket , data});
         });
     }
+
+    requestOnlineUsers = (socket:IAuthSocket) => {
+        return socket.on("requestOnlineUsers", () => {
+            this._chatService.requestOnlineUsers({socket});
+        });
+    }
 }

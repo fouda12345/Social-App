@@ -118,6 +118,16 @@ class ChatService {
             socket.emit("custom_error", error);
         }
     };
+    requestOnlineUsers = async ({ socket }) => {
+        try {
+            const users = [...gateway_main_1.connectedSockets.keys()].filter(userId => socket.credentials?.user?.friends?.includes(mongoose_1.Types.ObjectId.createFromHexString(userId)));
+            socket.emit("setOnlineStatus", users);
+        }
+        catch (error) {
+            console.log(error);
+            socket.emit("custom_error", error);
+        }
+    };
 }
 exports.ChatService = ChatService;
 exports.default = new ChatService();

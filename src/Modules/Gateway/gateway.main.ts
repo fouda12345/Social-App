@@ -30,6 +30,7 @@ export const intializeGateway = (server: httpServer) => {
         console.log(`connected sockest :` , connectedSockets);
 
         chatGateway.register(socket);
+        io.except(socket.id).emit("setOnlineStatus" , [userId]);
         disconnectionHandler(socket);
     });
 
@@ -44,6 +45,7 @@ export const intializeGateway = (server: httpServer) => {
             }
             console.log(`user ${userId} disconnected tab with id ${socket.id}`);
             console.log(`connected sockest :` , connectedSockets);
+            io.except(socket.id).emit("setOfflineStatus" , [userId])
         })
     }
 }

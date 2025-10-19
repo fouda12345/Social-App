@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { ICreateGroupChatDTO, IGetChatDTO, IGetGroupChatDTO, IJoinRoomDTO, ISendGrouopMessageDTO, ISendMessageDTO } from "./chat.dto";
+import { ICreateGroupChatDTO, IGetChatDTO, IGetGroupChatDTO, IJoinRoomDTO, IRequestOnlineUsersDTO, ISendGrouopMessageDTO, ISendMessageDTO } from "./chat.dto";
 import { successHandler } from "../../Utils/Handlers/success.handler";
 import { ChatReposetory } from "../../DB/reposetories/chat.reposetory";
 import { UserReposetory } from "../../DB/reposetories/user.reposetory";
@@ -129,6 +129,16 @@ export class ChatService {
             socket.emit("successMessage" , {content:data.content})
             socket.to(chat.roomId as string).emit("newMessage", { content : data.content , from: socket.credentials?.user , groupId: data.groupId })
             
+        } catch (error) {
+            console.log(error);
+            socket.emit("custom_error", error)
+        }
+    }
+
+    requestOnlineUsers = async ({ socket }: IRequestOnlineUsersDTO) => {
+        try {
+            const users = [...connectedSockets.keys()].filter(userId => socket.credentials?.user?.friends?.includes(Types.ObjectId.createFromHexString(userId)))
+            socket.emit("setOnlineStatus", users)
         } catch (error) {
             console.log(error);
             socket.emit("custom_error", error)
